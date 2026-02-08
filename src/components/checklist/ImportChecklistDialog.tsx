@@ -237,7 +237,7 @@ export function ImportChecklistDialog({
               rows={isMultiYear ? 10 : 12}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              className="font-mono text-sm"
+              className="text-sm"
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => handleClose(false)}>
@@ -278,7 +278,7 @@ export function ImportChecklistDialog({
                       <TableCell className="text-muted-foreground">
                         {card.line_number}
                       </TableCell>
-                      <TableCell className="font-mono">{card.card_number}</TableCell>
+                      <TableCell>{card.card_number}</TableCell>
                       <TableCell>
                         {card.error ? (
                           <span className="text-destructive text-sm">{card.error}</span>

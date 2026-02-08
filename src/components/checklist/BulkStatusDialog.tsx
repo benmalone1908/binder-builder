@@ -161,7 +161,7 @@ export function BulkStatusDialog({
                 rows={10}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
-                className="font-mono text-sm flex-1"
+                className="text-sm flex-1"
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => handleClose(false)}>
@@ -207,7 +207,7 @@ export function BulkStatusDialog({
                         key={idx}
                         className={!m.matched ? "bg-destructive/10" : ""}
                       >
-                        <TableCell className="font-mono">{m.card_number}</TableCell>
+                        <TableCell>{m.card_number}</TableCell>
                         <TableCell>
                           {m.matched ? m.matched.player_name : "—"}
                         </TableCell>

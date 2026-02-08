@@ -161,7 +161,7 @@ export function ChecklistItemRow({
           onClick={(e) => onSelectChange(item.id, !selected, e.shiftKey)}
         />
       </TableCell>
-      <TableCell className="font-mono w-24 whitespace-nowrap py-1.5">
+      <TableCell className="w-24 whitespace-nowrap py-1.5">
         {renderEditableCell("card_number")}
       </TableCell>
       <TableCell className="font-medium py-1.5">
@@ -183,8 +183,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "owned"
-                ? "text-green-600 bg-green-100 hover:bg-green-200"
-                : "text-muted-foreground hover:text-green-600"
+                ? "text-orange-600 bg-orange-100 hover:bg-orange-200"
+                : "text-muted-foreground hover:text-orange-600"
             )}
             onClick={() => setStatus("owned")}
             title="Have"
@@ -197,8 +197,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "pending"
-                ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
-                : "text-muted-foreground hover:text-yellow-600"
+                ? "text-slate-600 bg-slate-100 hover:bg-slate-200"
+                : "text-muted-foreground hover:text-slate-600"
             )}
             onClick={() => setStatus("pending")}
             title="Pending"
@@ -211,8 +211,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "need"
-                ? "text-red-600 bg-red-100 hover:bg-red-200"
-                : "text-muted-foreground hover:text-red-600"
+                ? "text-slate-500 bg-slate-100 hover:bg-slate-200"
+                : "text-muted-foreground hover:text-slate-500"
             )}
             onClick={() => setStatus("need")}
             title="Need"
