@@ -303,7 +303,7 @@ export default function CardSearch() {
               <TableBody>
                 {results.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-mono whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap">
                       {item.card_number}
                     </TableCell>
                     <TableCell className="font-medium">{item.player_name}</TableCell>
@@ -332,8 +332,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "owned"
-                              ? "text-green-600 bg-green-100 hover:bg-green-200"
-                              : "text-muted-foreground hover:text-green-600"
+                              ? "text-orange-600 bg-orange-100 hover:bg-orange-200"
+                              : "text-muted-foreground hover:text-orange-600"
                           )}
                           onClick={() => setStatus(item, "owned")}
                           title="Have"
@@ -346,8 +346,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "pending"
-                              ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
-                              : "text-muted-foreground hover:text-yellow-600"
+                              ? "text-slate-600 bg-slate-100 hover:bg-slate-200"
+                              : "text-muted-foreground hover:text-slate-600"
                           )}
                           onClick={() => setStatus(item, "pending")}
                           title="Pending"
@@ -360,8 +360,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "need"
-                              ? "text-red-600 bg-red-100 hover:bg-red-200"
-                              : "text-muted-foreground hover:text-red-600"
+                              ? "text-slate-500 bg-slate-100 hover:bg-slate-200"
+                              : "text-muted-foreground hover:text-slate-500"
                           )}
                           onClick={() => setStatus(item, "need")}
                           title="Need"

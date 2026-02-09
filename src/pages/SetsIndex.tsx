@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { Plus, Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
@@ -26,6 +25,7 @@ import { SetCard } from "@/components/sets/SetCard";
 import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import { DeleteSetDialog } from "@/components/sets/DeleteSetDialog";
 import { CoverImageDialog } from "@/components/sets/CoverImageDialog";
+import { SetDetailSheet } from "@/components/sets/SetDetailSheet";
 
 type SetRow = Tables<"sets">;
 type CollectionRow = Tables<"collections">;
@@ -60,7 +60,6 @@ const SET_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function SetsIndex() {
-  const navigate = useNavigate();
   const [sets, setSets] = useState<SetRow[]>([]);
   const [statsMap, setStatsMap] = useState<Map<string, SetStats>>(new Map());
   const [collections, setCollections] = useState<CollectionRow[]>([]);
@@ -77,6 +76,7 @@ export default function SetsIndex() {
   const [deletingSet, setDeletingSet] = useState<SetRow | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
   const [imageSet, setImageSet] = useState<SetRow | null>(null);
+  const [flyoutSetId, setFlyoutSetId] = useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -363,7 +363,7 @@ export default function SetsIndex() {
                     </div>
                     <Progress value={collection.percentage} className="h-2" />
                     {collection.pendingCards > 0 && (
-                      <p className="text-xs text-amber-600 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         {collection.pendingCards} cards pending
                       </p>
                     )}
@@ -379,6 +379,7 @@ export default function SetsIndex() {
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                             onEditImage={handleEditImage}
+                            onClick={() => setFlyoutSetId(set.id)}
                           />
                         ))}
                       </div>
@@ -393,7 +394,7 @@ export default function SetsIndex() {
                                 <TableRow
                                   key={set.id}
                                   className="cursor-pointer hover:bg-muted/50"
-                                  onClick={() => navigate(`/sets/${set.id}`)}
+                                  onClick={() => setFlyoutSetId(set.id)}
                                 >
                                   <TableCell className="py-2 w-20">
                                     {set.cover_image_url ? (
@@ -448,6 +449,7 @@ export default function SetsIndex() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onEditImage={handleEditImage}
+                        onClick={() => setFlyoutSetId(set.id)}
                       />
                     ))}
                   </div>
@@ -478,7 +480,7 @@ export default function SetsIndex() {
                         <TableRow
                           key={set.id}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => navigate(`/sets/${set.id}`)}
+                          onClick={() => setFlyoutSetId(set.id)}
                         >
                           <TableCell className="py-2">
                             {set.cover_image_url ? (
@@ -579,6 +581,7 @@ export default function SetsIndex() {
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onEditImage={handleEditImage}
+                  onClick={() => setFlyoutSetId(set.id)}
                 />
               ))}
             </div>
@@ -604,7 +607,7 @@ export default function SetsIndex() {
                       <TableRow
                         key={set.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/sets/${set.id}`)}
+                        onClick={() => setFlyoutSetId(set.id)}
                       >
                         <TableCell className="py-2">
                           {set.cover_image_url ? (
@@ -693,6 +696,14 @@ export default function SetsIndex() {
         onOpenChange={setImageOpen}
         set={imageSet}
         onSuccess={loadData}
+      />
+
+      <SetDetailSheet
+        setId={flyoutSetId}
+        open={!!flyoutSetId}
+        onOpenChange={(open) => {
+          if (!open) setFlyoutSetId(null);
+        }}
       />
     </div>
   );

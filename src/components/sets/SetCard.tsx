@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { MoreVertical, Pencil, Trash2, Layers, Package, Tag, ImageOff, ImagePlus } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -12,10 +11,10 @@ import {
 type SetRow = Tables<"sets">;
 
 const SET_TYPE_COLORS: Record<string, { bg: string; text: string; border: string; accent: string }> = {
-  base: { bg: "bg-amber-50", text: "text-amber-900", border: "border-amber-300", accent: "bg-amber-100" },
-  insert: { bg: "bg-violet-50", text: "text-violet-900", border: "border-violet-300", accent: "bg-violet-100" },
-  rainbow: { bg: "bg-gradient-to-r from-rose-50 via-sky-50 to-emerald-50", text: "text-slate-800", border: "border-pink-300", accent: "bg-gradient-to-br from-rose-100 via-violet-100 to-cyan-100" },
-  multi_year_insert: { bg: "bg-slate-50", text: "text-slate-900", border: "border-slate-400", accent: "bg-slate-100" },
+  base: { bg: "bg-slate-50", text: "text-slate-800", border: "border-slate-300", accent: "bg-slate-100" },
+  insert: { bg: "bg-sky-50", text: "text-sky-900", border: "border-sky-300", accent: "bg-sky-100" },
+  rainbow: { bg: "bg-slate-50", text: "text-slate-800", border: "border-slate-400", accent: "bg-slate-100" },
+  multi_year_insert: { bg: "bg-slate-50", text: "text-slate-800", border: "border-slate-400", accent: "bg-slate-100" },
 };
 
 const SET_TYPE_LABELS: Record<string, string> = {
@@ -37,10 +36,10 @@ interface SetCardProps {
   onEdit: (set: SetRow) => void;
   onDelete: (set: SetRow) => void;
   onEditImage: (set: SetRow) => void;
+  onClick?: () => void;
 }
 
-export function SetCard({ set, stats, onEdit, onDelete, onEditImage }: SetCardProps) {
-  const navigate = useNavigate();
+export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick }: SetCardProps) {
   const completionPct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
   const typeStyle = SET_TYPE_COLORS[set.set_type] || SET_TYPE_COLORS.base;
 
@@ -55,7 +54,7 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage }: SetCardPr
         transition-all duration-300 ease-out
         hover:-translate-y-1
       `}
-      onClick={() => navigate(`/sets/${set.id}`)}
+      onClick={onClick}
     >
       {/* Card layout with optional cover image */}
       <div className="flex">
@@ -175,9 +174,9 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage }: SetCardPr
               <span className={`
                 inline-flex items-center gap-0.5 px-1.5 py-0.5
                 text-[10px] font-medium rounded-full
-                bg-violet-100/80 backdrop-blur-sm
-                text-violet-800
-                border border-violet-200
+                bg-sky-100/80 backdrop-blur-sm
+                text-sky-800
+                border border-sky-200
               `}>
                 <Layers className="w-2.5 h-2.5" />
                 {set.insert_set_name}
@@ -204,16 +203,7 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage }: SetCardPr
                 </div>
                 <div className="relative h-1.5 rounded-full bg-white/80 overflow-hidden shadow-inner">
                   <div
-                    className={`
-                      absolute inset-y-0 left-0 rounded-full
-                      transition-all duration-500 ease-out
-                      ${completionPct === 100
-                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                        : completionPct >= 75
-                          ? 'bg-gradient-to-r from-amber-400 to-amber-500'
-                          : 'bg-gradient-to-r from-slate-400 to-slate-500'
-                      }
-                    `}
+                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out bg-orange-500"
                     style={{ width: `${completionPct}%` }}
                   />
                 </div>
@@ -222,7 +212,7 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage }: SetCardPr
                     {completionPct}%
                   </span>
                   {stats.pending > 0 && (
-                    <span className="text-amber-600 font-medium">
+                    <span className="text-slate-500 font-medium">
                       {stats.pending} pending
                     </span>
                   )}

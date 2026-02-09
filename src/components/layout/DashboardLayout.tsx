@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Library, Menu, Search, Settings, X } from "lucide-react";
+import { Library, Menu, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           sidebarOpen ? "w-56" : "w-0 overflow-hidden"
         )}
       >
-        <div className="flex h-14 items-center border-b px-4">
-          <span className="text-lg font-semibold tracking-tight">Card Tracker</span>
+        <div className="flex h-[106px] items-center border-b px-4">
         </div>
         <nav className="flex-1 space-y-1 p-2">
           <NavLink
@@ -71,14 +70,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center border-b px-4">
+        <header className="flex h-[106px] items-center border-b px-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <Menu className="h-4 w-4" />
           </Button>
+          <div className="flex items-end ml-4">
+            <img src="/image2.png" alt="Bindered mascot" style={{ height: '80px' }} />
+            <img src="/image.png" alt="Bindered logo" style={{ height: '75px' }} />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
