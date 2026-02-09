@@ -183,8 +183,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "owned"
-                ? "text-orange-600 bg-orange-100 hover:bg-orange-200"
-                : "text-muted-foreground hover:text-orange-600"
+                ? "text-green-600 bg-green-100 hover:bg-green-200"
+                : "text-muted-foreground hover:text-green-600"
             )}
             onClick={() => setStatus("owned")}
             title="Have"
@@ -197,8 +197,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "pending"
-                ? "text-slate-600 bg-slate-100 hover:bg-slate-200"
-                : "text-muted-foreground hover:text-slate-600"
+                ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
+                : "text-muted-foreground hover:text-yellow-600"
             )}
             onClick={() => setStatus("pending")}
             title="Pending"
@@ -211,8 +211,8 @@ export function ChecklistItemRow({
             className={cn(
               "h-7 w-7",
               item.status === "need"
-                ? "text-slate-500 bg-slate-100 hover:bg-slate-200"
-                : "text-muted-foreground hover:text-slate-500"
+                ? "text-red-600 bg-red-100 hover:bg-red-200"
+                : "text-muted-foreground hover:text-red-600"
             )}
             onClick={() => setStatus("need")}
             title="Need"

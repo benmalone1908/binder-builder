@@ -26,6 +26,7 @@ import {
   type StatusFilter,
 } from "@/components/checklist/ChecklistToolbar";
 import { ChecklistItemRow } from "@/components/checklist/ChecklistItemRow";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 type SetRow = Tables<"sets">;
@@ -79,6 +80,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [changeYearOpen, setChangeYearOpen] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!setId) return;
@@ -388,11 +390,17 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
           isCompact ? "w-16 h-20" : "w-24 h-32"
         )}>
           {set.cover_image_url ? (
-            <img
-              src={set.cover_image_url}
-              alt={`${set.name} cover`}
-              className="w-full h-full object-cover"
-            />
+            <button
+              type="button"
+              className="w-full h-full cursor-pointer"
+              onClick={() => setImageModalOpen(true)}
+            >
+              <img
+                src={set.cover_image_url}
+                alt={`${set.name} cover`}
+                className="w-full h-full object-cover"
+              />
+            </button>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <ImageOff className={cn(
@@ -435,7 +443,8 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         </div>
         <Button
           variant="outline"
-          size={isCompact ? "sm" : "sm"}
+          size="sm"
+          className={isCompact ? "mr-6" : ""}
           onClick={() => setEditSetOpen(true)}
         >
           <Pencil className="h-3 w-3 mr-2" />
@@ -748,6 +757,19 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         selectedCount={selectedIds.size}
         onConfirm={handleBulkYearChange}
       />
+
+      {set.cover_image_url && (
+        <Dialog open={imageModalOpen} onOpenChange={setImageModalOpen}>
+          <DialogContent className="w-auto max-w-[90vw] p-2">
+            <DialogTitle className="sr-only">{set.name} cover image</DialogTitle>
+            <img
+              src={set.cover_image_url}
+              alt={`${set.name} cover`}
+              className="h-[500px] w-auto rounded"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

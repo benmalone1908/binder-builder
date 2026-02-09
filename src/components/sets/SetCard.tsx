@@ -76,19 +76,21 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick }: 
             </div>
           )}
           {/* Year badge overlay */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
-            <span className={`
-              inline-flex items-center justify-center
-              px-2 py-0.5 rounded
-              text-xs font-bold tracking-tight
-              bg-white/90 backdrop-blur-sm
-              border ${typeStyle.border}
-              ${typeStyle.text}
-              shadow-sm
-            `}>
-              {set.year}
-            </span>
-          </div>
+          {set.set_type !== "multi_year_insert" && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+              <span className={`
+                inline-flex items-center justify-center
+                px-2 py-0.5 rounded
+                text-xs font-bold tracking-tight
+                bg-white/90 backdrop-blur-sm
+                border ${typeStyle.border}
+                ${typeStyle.text}
+                shadow-sm
+              `}>
+                {set.year}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Main content */}
