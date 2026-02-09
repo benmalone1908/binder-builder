@@ -159,7 +159,8 @@ export default function CardSearch() {
   }
 
   function openImageSearch(item: SearchResult) {
-    const query = `${item.set.year} ${item.set.brand} ${item.set.product_line} ${item.player_name} #${item.card_number} baseball card`;
+    const year = item.year || item.set.year;
+    const query = `${year} ${item.set.brand} ${item.set.product_line} ${item.player_name} #${item.card_number} baseball card`;
     window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank");
   }
 
@@ -308,7 +309,7 @@ export default function CardSearch() {
                     </TableCell>
                     <TableCell className="font-medium">{item.player_name}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {item.set.year}
+                      {item.year || item.set.year}
                     </TableCell>
                     <TableCell>{item.set.brand}</TableCell>
                     <TableCell className="font-medium">{item.set.product_line}</TableCell>
@@ -332,8 +333,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "owned"
-                              ? "text-orange-600 bg-orange-100 hover:bg-orange-200"
-                              : "text-muted-foreground hover:text-orange-600"
+                              ? "text-green-600 bg-green-100 hover:bg-green-200"
+                              : "text-muted-foreground hover:text-green-600"
                           )}
                           onClick={() => setStatus(item, "owned")}
                           title="Have"
@@ -346,8 +347,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "pending"
-                              ? "text-slate-600 bg-slate-100 hover:bg-slate-200"
-                              : "text-muted-foreground hover:text-slate-600"
+                              ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
+                              : "text-muted-foreground hover:text-yellow-600"
                           )}
                           onClick={() => setStatus(item, "pending")}
                           title="Pending"
@@ -360,8 +361,8 @@ export default function CardSearch() {
                           className={cn(
                             "h-7 w-7",
                             item.status === "need"
-                              ? "text-slate-500 bg-slate-100 hover:bg-slate-200"
-                              : "text-muted-foreground hover:text-slate-500"
+                              ? "text-red-600 bg-red-100 hover:bg-red-200"
+                              : "text-muted-foreground hover:text-red-600"
                           )}
                           onClick={() => setStatus(item, "need")}
                           title="Need"

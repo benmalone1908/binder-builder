@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #368 | 9:43 PM | 🟣 | Multi-Year Insert Sets Now Support Year-Specific Filtering and Display | ~383 |
 | #282 | 5:55 PM | 🟣 | Cover Image Display and Insert Set Name Badge on Set Detail Page | ~316 |
 | #248 | 4:39 PM | 🔴 | Fixed Set Statistics Loading to Handle Large Collections | ~308 |
 </claude-mem-context>
