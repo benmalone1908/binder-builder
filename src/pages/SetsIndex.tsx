@@ -26,6 +26,7 @@ import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import { DeleteSetDialog } from "@/components/sets/DeleteSetDialog";
 import { CoverImageDialog } from "@/components/sets/CoverImageDialog";
 import { SetDetailSheet } from "@/components/sets/SetDetailSheet";
+import { GlobalSearchModal } from "@/components/sets/GlobalSearchModal";
 
 type SetRow = Tables<"sets">;
 type CollectionRow = Tables<"collections">;
@@ -77,6 +78,9 @@ export default function SetsIndex() {
   const [imageOpen, setImageOpen] = useState(false);
   const [imageSet, setImageSet] = useState<SetRow | null>(null);
   const [flyoutSetId, setFlyoutSetId] = useState<string | null>(null);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
+  const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -276,7 +280,7 @@ export default function SetsIndex() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -286,6 +290,19 @@ export default function SetsIndex() {
                 className="pl-9"
               />
             </div>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => {
+                setSearchCollectionId(null);
+                setSearchCollectionName(null);
+                setGlobalSearchOpen(true);
+              }}
+              className="gap-2 whitespace-nowrap"
+            >
+              <Search className="h-4 w-4" />
+              Search Cards
+            </Button>
             {activeTab === "regular" && collections.length > 0 && (
               <div className="flex items-center border rounded-md">
                 <Button
@@ -359,6 +376,19 @@ export default function SetsIndex() {
                         <FolderOpen className="h-5 w-5 text-muted-foreground" />
                         <h2 className="text-lg font-semibold">{collection.name}</h2>
                         <Badge variant="secondary">{collection.sets.length} sets</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSearchCollectionId(collection.id);
+                            setSearchCollectionName(collection.name);
+                            setGlobalSearchOpen(true);
+                          }}
+                          className="gap-2"
+                        >
+                          <Search className="h-3.5 w-3.5" />
+                          Search
+                        </Button>
                       </div>
                       <div className="text-right">
                         <span className="text-xl font-bold">{collection.percentage}%</span>
@@ -834,6 +864,14 @@ export default function SetsIndex() {
             loadData(); // Refresh stats when flyout closes
           }
         }}
+      />
+
+      <GlobalSearchModal
+        open={globalSearchOpen}
+        onOpenChange={setGlobalSearchOpen}
+        onNavigateToSet={(setId) => setFlyoutSetId(setId)}
+        collectionId={searchCollectionId}
+        collectionName={searchCollectionName}
       />
     </div>
   );

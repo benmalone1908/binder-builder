@@ -213,16 +213,16 @@ export function ChecklistItemRow({
         />
       </TableCell>
       {!isRainbow && (
-        <TableCell className="w-24 whitespace-nowrap py-1.5">
+        <TableCell className="w-20 whitespace-nowrap py-1.5">
           {renderEditableCell("card_number")}
         </TableCell>
       )}
       {!isRainbow && (
         <>
-          <TableCell className="font-medium py-1.5">
+          <TableCell className="font-medium py-1.5 truncate max-w-0">
             {renderEditableCell("player_name")}
           </TableCell>
-          <TableCell className="text-muted-foreground py-1.5">
+          <TableCell className="text-muted-foreground py-1.5 whitespace-nowrap">
             {renderEditableCell("team")}
           </TableCell>
         </>
@@ -233,11 +233,11 @@ export function ChecklistItemRow({
         </TableCell>
       )}
       {isMultiYear && (
-        <TableCell className="text-muted-foreground py-1.5">
+        <TableCell className="text-muted-foreground py-1.5 whitespace-nowrap">
           {item.year || "—"}
         </TableCell>
       )}
-      <TableCell className="text-muted-foreground py-1.5 text-sm">
+      <TableCell className="text-muted-foreground py-1.5 text-sm whitespace-nowrap">
         {item.serial_owned && item.parallel_print_run
           ? `${item.serial_owned}/${item.parallel_print_run}`
           : item.serial_owned

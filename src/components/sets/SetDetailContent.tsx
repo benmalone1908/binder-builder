@@ -201,14 +201,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   const filteredAndSorted = useMemo(() => {
     let result = [...items];
 
-    if (statusFilter !== "all") {
-      result = result.filter((i) => i.status === statusFilter);
-    }
-
-    if (isMultiYear && yearFilter !== "all") {
-      result = result.filter((i) => i.year === yearFilter);
-    }
-
+    // When searching, show all statuses; otherwise apply status filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -217,6 +210,12 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
           i.player_name.toLowerCase().includes(term) ||
           (i.team && i.team.toLowerCase().includes(term))
       );
+    } else if (statusFilter !== "all") {
+      result = result.filter((i) => i.status === statusFilter);
+    }
+
+    if (isMultiYear && yearFilter !== "all") {
+      result = result.filter((i) => i.year === yearFilter);
     }
 
     // Sort by parallel print run (descending) for rainbow sets, otherwise by card number
@@ -254,7 +253,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     }
 
     return result;
-  }, [items, statusFilter, searchTerm, isMultiYear, yearFilter]);
+  }, [items, statusFilter, searchTerm, isMultiYear, yearFilter, isRainbow]);
 
   const cardsByYear = useMemo(() => {
     if (!isMultiYear || yearFilter !== "all") return null;
@@ -671,7 +670,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             "border rounded-lg overflow-hidden",
             isCompact && "overflow-x-auto"
           )}>
-            <Table className={isCompact ? "min-w-[600px]" : ""}>
+            <Table className={cn(isCompact ? "min-w-[600px]" : "", "table-fixed")}>
               <TableHeader>
                 <TableRow>
                   {isRainbow && <TableHead className="w-8"></TableHead>}
@@ -681,16 +680,16 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     />
                   </TableHead>
-                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-16" : "w-24")}>Card #</TableHead>}
-                  {!isRainbow && <TableHead>Player</TableHead>}
-                  {!isRainbow && <TableHead className={isCompact ? "w-20" : ""}>Team</TableHead>}
+                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-16" : "w-20")}>Card #</TableHead>}
+                  {!isRainbow && <TableHead className={isCompact ? "w-[35%]" : "w-[40%]"}>Player</TableHead>}
+                  {!isRainbow && <TableHead className={isCompact ? "w-24" : "w-32"}>Team</TableHead>}
                   {isRainbow && <TableHead className="w-64">Parallel</TableHead>}
                   {isMultiYear && yearFilter !== "all" && (
-                    <TableHead className={isCompact ? "w-12" : "w-16"}>Year</TableHead>
+                    <TableHead className={isCompact ? "w-12" : "w-14"}>Year</TableHead>
                   )}
-                  <TableHead className={isRainbow ? "w-32" : (isCompact ? "w-16" : "w-20")}>Serial #</TableHead>
-                  <TableHead className={isCompact ? "w-20" : "w-28"}>Status</TableHead>
-                  <TableHead className={isCompact ? "w-12" : "w-10"}></TableHead>
+                  <TableHead className={isRainbow ? "w-28" : (isCompact ? "w-20" : "w-24")}>Serial #</TableHead>
+                  <TableHead className={isCompact ? "w-24" : "w-28"}>Status</TableHead>
+                  <TableHead className={isCompact ? "w-14" : "w-16"}></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
