@@ -9,4 +9,13 @@
 |----|------|---|-------|------|
 | #417 | 9:10 AM | ✅ | Database Unique Constraint Updated to Support Parallel Cards | ~408 |
 | #410 | 9:01 AM | 🔴 | Database Migration Improved to Handle Multiple Constraint Name Variants | ~334 |
+
+### Feb 9, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #608 | 8:25 PM | 🔵 | Initial Schema Creates Enums, Tables with CASCADE Delete, Auto-Update Triggers, and Performance Indexes | ~525 |
+| #606 | 8:24 PM | 🔵 | Supabase Authentication Intentionally Disabled for MVP with Permissive RLS Policies | ~535 |
+| #591 | 8:22 PM | ✅ | Collections Migration Implements Many-to-Many Relationship with Cascade Delete Protection | ~447 |
+| #582 | " | ✅ | Reference Data Migration Creates Lookup Tables with Seeded Data from Existing Sets | ~466 |
 </claude-mem-context>

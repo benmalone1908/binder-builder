@@ -70,8 +70,8 @@ export function parseChecklistText(text: string, defaultYear?: number | null): P
 
 /**
  * Parses rainbow parallel text into structured data
- * Expected format: "Sky Blue – /499" or "Platinum – 1/1"
- * Extracts parallel name and print run
+ * Formats: "Sky Blue – /499", "Platinum – 1/1", or just "Base" (unnumbered)
+ * Extracts parallel name and print run (if present)
  */
 export function parseRainbowText(text: string): ParsedParallel[] {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -80,13 +80,13 @@ export function parseRainbowText(text: string): ParsedParallel[] {
     // Look for dash separator (regular dash, en-dash, or em-dash)
     const dashMatch = line.match(/^(.+?)\s*[–—-]\s*(.+)$/);
 
+    // If no dash, treat entire line as parallel name (unnumbered parallel)
     if (!dashMatch) {
       return {
         parallel: line,
         parallel_print_run: null,
         raw_line: line,
         line_number: index + 1,
-        error: 'Could not parse parallel format (expected "Name – /Number")',
       };
     }
 

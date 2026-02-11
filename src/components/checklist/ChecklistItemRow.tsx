@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Image, Pencil, CheckCircle2, Ban, Timer } from "lucide-react";
+import { Image, Pencil, CheckCircle2, Ban, Timer, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type ChecklistItem = Tables<"checklist_items">;
 
@@ -22,6 +24,7 @@ interface ChecklistItemRowProps {
   setInfo: SetInfo;
   isMultiYear?: boolean;
   isRainbow?: boolean;
+  isDraggable?: boolean;
   selected: boolean;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
   onStatusChange: (id: string, newStatus: "need" | "pending" | "owned") => void;
@@ -37,6 +40,7 @@ export function ChecklistItemRow({
   setInfo,
   isMultiYear,
   isRainbow,
+  isDraggable = false,
   selected,
   onSelectChange,
   onStatusChange,
@@ -47,6 +51,21 @@ export function ChecklistItemRow({
   const [editingField, setEditingField] = useState<EditingField>(null);
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Drag and drop
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !isDraggable });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   useEffect(() => {
     if (editingField && inputRef.current) {
@@ -172,7 +191,21 @@ export function ChecklistItemRow({
   }
 
   return (
-    <TableRow className={selected ? "bg-accent/50" : ""}>
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        selected ? "bg-accent/50" : "",
+        isDragging && "opacity-50"
+      )}
+    >
+      {isDraggable && (
+        <TableCell className="w-8 py-1.5 cursor-grab active:cursor-grabbing">
+          <div {...attributes} {...listeners}>
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </TableCell>
+      )}
       <TableCell className="w-10 py-1.5">
         <Checkbox
           checked={selected}

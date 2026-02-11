@@ -1,9 +1,24 @@
 import { useState, useEffect, useMemo, useRef, Fragment, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Pencil, Upload, ImageOff, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, Pencil, Upload, ImageOff, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { exportChecklistToCSV } from "@/lib/csv-export";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { SetFormDialog } from "@/components/sets/SetFormDialog";
+import { NotesDialog } from "@/components/sets/NotesDialog";
 import { ImportChecklistDialog } from "@/components/checklist/ImportChecklistDialog";
 import { EditChecklistItemDialog } from "@/components/checklist/EditChecklistItemDialog";
 import { AddParallelDialog } from "@/components/checklist/AddParallelDialog";
@@ -77,6 +93,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   const lastClickedIdRef = useRef<string | null>(null);
 
   const [editSetOpen, setEditSetOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [addParallelOpen, setAddParallelOpen] = useState(false);
   const [editItemOpen, setEditItemOpen] = useState(false);
@@ -90,6 +107,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     parallel: string | null;
     printRun: string | null;
   } | null>(null);
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const loadData = useCallback(async () => {
     if (!setId) return;
@@ -197,6 +222,20 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     // Sort by parallel print run (descending) for rainbow sets, otherwise by card number
     if (isRainbow) {
       result.sort((a, b) => {
+        // First: Check if manual ordering is set
+        const aHasOrder = a.display_order !== null && a.display_order !== undefined;
+        const bHasOrder = b.display_order !== null && b.display_order !== undefined;
+
+        // If both have display_order, sort by that
+        if (aHasOrder && bHasOrder) {
+          return a.display_order! - b.display_order!;
+        }
+
+        // If only one has display_order, items with display_order come first
+        if (aHasOrder) return -1;
+        if (bHasOrder) return 1;
+
+        // Neither has display_order: use automatic sorting
         // Cards without print run (base/unnumbered) come first
         const aHasRun = a.parallel_print_run && a.parallel_print_run.trim();
         const bHasRun = b.parallel_print_run && b.parallel_print_run.trim();
@@ -277,6 +316,44 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   }
 
   console.log('SetDetailContent render - handleSerialNumberCapture exists:', !!handleSerialNumberCapture);
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = filteredAndSorted.findIndex((item) => item.id === active.id);
+    const newIndex = filteredAndSorted.findIndex((item) => item.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedItems = arrayMove(filteredAndSorted, oldIndex, newIndex);
+
+    // Assign display_order to all items (0-indexed)
+    const updates = reorderedItems.map((item, index) => ({
+      id: item.id,
+      display_order: index,
+    }));
+
+    // Update database
+    try {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('checklist_items')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+
+        if (error) throw error;
+      }
+
+      // Refresh data
+      await loadData();
+      toast.success('Order updated');
+    } catch (error) {
+      console.error('Failed to update order:', error);
+      toast.error('Failed to update order');
+    }
+  }
 
   function handleSelectChange(itemId: string, selected: boolean, shiftKey: boolean) {
     const visibleItems = cardsByYear
@@ -482,19 +559,37 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
               {items[0].team && <span className="text-muted-foreground ml-2">• {items[0].team}</span>}
             </div>
           )}
-          {set.notes && !isCompact && (
-            <p className="text-sm text-muted-foreground mt-2">{set.notes}</p>
+          {!isCompact && (
+            <button
+              onClick={() => setNotesDialogOpen(true)}
+              className="text-sm text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1.5 transition-colors"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="underline decoration-dotted underline-offset-2">
+                {set.notes ? "View notes" : "Add notes"}
+              </span>
+            </button>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className={isCompact ? "mr-6" : ""}
-          onClick={() => setEditSetOpen(true)}
-        >
-          <Pencil className="h-3 w-3 mr-2" />
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setNotesDialogOpen(true)}
+            title="Notes"
+          >
+            <FileText className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={isCompact ? "mr-6" : ""}
+            onClick={() => setEditSetOpen(true)}
+          >
+            <Pencil className="h-3 w-3 mr-2" />
+            Edit
+          </Button>
+        </div>
       </div>
 
       {/* Checklist content */}
@@ -579,6 +674,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             <Table className={isCompact ? "min-w-[600px]" : ""}>
               <TableHeader>
                 <TableRow>
+                  {isRainbow && <TableHead className="w-8"></TableHead>}
                   <TableHead className={isCompact ? "w-8" : "w-10"}>
                     <Checkbox
                       checked={allVisibleSelected}
@@ -598,7 +694,35 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cardsByYear ? (
+                {isRainbow && !cardsByYear ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredAndSorted.map(item => item.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {filteredAndSorted.map((item) => (
+                        <ChecklistItemRow
+                          key={item.id}
+                          item={item}
+                          setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                          isMultiYear={false}
+                          isRainbow={isRainbow}
+                          isDraggable={true}
+                          selected={selectedIds.has(item.id)}
+                          onSelectChange={handleSelectChange}
+                          onStatusChange={handleStatusChange}
+                          onFieldChange={handleFieldChange}
+                          onEdit={handleEditItem}
+                          onSerialNumberCapture={handleSerialNumberCapture}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                ) : cardsByYear ? (
                   cardsByYear.map((group) => {
                     const isExpanded = expandedYears.has(group.year);
                     const yearLabel = group.year ? String(group.year) : "No Year";
@@ -782,6 +906,15 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         open={editSetOpen}
         onOpenChange={setEditSetOpen}
         set={set}
+        onSuccess={loadData}
+      />
+
+      <NotesDialog
+        open={notesDialogOpen}
+        onOpenChange={setNotesDialogOpen}
+        setId={set.id}
+        setName={set.name}
+        initialNotes={set.notes}
         onSuccess={loadData}
       />
 

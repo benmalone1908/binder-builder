@@ -60,9 +60,11 @@ export type Database = {
           team: string | null
           subset_name: string | null
           parallel: string | null
+          parallel_print_run: string | null
           serial_owned: string | null
           year: number | null
           status: Database["public"]["Enums"]["card_status"]
+          display_order: number | null
           created_at: string
           updated_at: string
         }
@@ -74,9 +76,11 @@ export type Database = {
           team?: string | null
           subset_name?: string | null
           parallel?: string | null
+          parallel_print_run?: string | null
           serial_owned?: string | null
           year?: number | null
           status?: Database["public"]["Enums"]["card_status"]
+          display_order?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -88,9 +92,11 @@ export type Database = {
           team?: string | null
           subset_name?: string | null
           parallel?: string | null
+          parallel_print_run?: string | null
           serial_owned?: string | null
           year?: number | null
           status?: Database["public"]["Enums"]["card_status"]
+          display_order?: number | null
           created_at?: string
           updated_at?: string
         }
