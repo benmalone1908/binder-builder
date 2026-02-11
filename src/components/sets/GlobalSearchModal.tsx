@@ -10,8 +10,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, CheckCircle2, Timer, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ChecklistItem = Tables<"checklist_items">;
 type SetRow = Tables<"sets">;
@@ -32,18 +33,6 @@ interface GlobalSearchModalProps {
   collectionId?: string | null;
   collectionName?: string | null;
 }
-
-const STATUS_STYLES = {
-  owned: "bg-green-100 text-green-700 border-green-300",
-  pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
-  need: "bg-red-100 text-red-700 border-red-300",
-};
-
-const STATUS_LABELS = {
-  owned: "Have",
-  pending: "Pending",
-  need: "Need",
-};
 
 export function GlobalSearchModal({
   open,
@@ -131,6 +120,33 @@ export function GlobalSearchModal({
   function handleNavigate(setId: string) {
     onNavigateToSet(setId);
     onOpenChange(false);
+  }
+
+  async function updateCardStatus(
+    cardId: string,
+    newStatus: "need" | "pending" | "owned"
+  ) {
+    const { error } = await supabase
+      .from("checklist_items")
+      .update({ status: newStatus })
+      .eq("id", cardId);
+
+    if (error) {
+      toast.error("Failed to update status");
+      return;
+    }
+
+    // Update local state
+    setResults((prev) =>
+      prev.map((group) => ({
+        ...group,
+        cards: group.cards.map((card) =>
+          card.id === cardId ? { ...card, status: newStatus } : card
+        ),
+      }))
+    );
+
+    toast.success("Status updated");
   }
 
   return (
@@ -232,12 +248,50 @@ export function GlobalSearchModal({
                               </div>
                             )}
                           </div>
-                          <Badge
-                            variant="outline"
-                            className={cn("whitespace-nowrap", STATUS_STYLES[card.status])}
-                          >
-                            {STATUS_LABELS[card.status]}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-7 w-7",
+                                card.status === "owned"
+                                  ? "text-green-600 bg-green-100 hover:bg-green-200"
+                                  : "text-muted-foreground hover:text-green-600"
+                              )}
+                              onClick={() => updateCardStatus(card.id, "owned")}
+                              title="Have"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-7 w-7",
+                                card.status === "pending"
+                                  ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
+                                  : "text-muted-foreground hover:text-yellow-600"
+                              )}
+                              onClick={() => updateCardStatus(card.id, "pending")}
+                              title="Pending"
+                            >
+                              <Timer className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-7 w-7",
+                                card.status === "need"
+                                  ? "text-red-600 bg-red-100 hover:bg-red-200"
+                                  : "text-muted-foreground hover:text-red-600"
+                              )}
+                              onClick={() => updateCardStatus(card.id, "need")}
+                              title="Need"
+                            >
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}

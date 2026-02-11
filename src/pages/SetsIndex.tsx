@@ -82,6 +82,31 @@ export default function SetsIndex() {
   const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
 
+  async function loadSetStats(setId: string) {
+    // Fetch stats for a single set
+    const { data: items } = await supabase
+      .from("checklist_items")
+      .select("status")
+      .eq("set_id", setId);
+
+    const stats: SetStats = { total: 0, owned: 0, pending: 0 };
+
+    if (items) {
+      for (const item of items) {
+        stats.total++;
+        if (item.status === "owned") stats.owned++;
+        if (item.status === "pending") stats.pending++;
+      }
+    }
+
+    // Update just this set's stats in the map
+    setStatsMap((prev) => {
+      const next = new Map(prev);
+      next.set(setId, stats);
+      return next;
+    });
+  }
+
   async function loadData() {
     setLoading(true);
 
@@ -280,7 +305,7 @@ export default function SetsIndex() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -290,19 +315,6 @@ export default function SetsIndex() {
                 className="pl-9"
               />
             </div>
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => {
-                setSearchCollectionId(null);
-                setSearchCollectionName(null);
-                setGlobalSearchOpen(true);
-              }}
-              className="gap-2 whitespace-nowrap"
-            >
-              <Search className="h-4 w-4" />
-              Search Cards
-            </Button>
             {activeTab === "regular" && collections.length > 0 && (
               <div className="flex items-center border rounded-md">
                 <Button
@@ -860,8 +872,11 @@ export default function SetsIndex() {
         open={!!flyoutSetId}
         onOpenChange={(open) => {
           if (!open) {
+            // Refresh only the specific set's stats
+            if (flyoutSetId) {
+              loadSetStats(flyoutSetId);
+            }
             setFlyoutSetId(null);
-            loadData(); // Refresh stats when flyout closes
           }
         }}
       />
