@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers } from "lucide-react";
+import { Plus, Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ type SetRow = Tables<"sets">;
 type CollectionRow = Tables<"collections">;
 type ViewMode = "grid" | "list";
 type GroupBy = "year" | "collection";
-type SetTab = "regular" | "multi_year";
+type SetTab = "regular" | "multi_year" | "rainbow";
 
 interface SetStats {
   total: number;
@@ -139,11 +139,13 @@ export default function SetsIndex() {
   const filteredSets = useMemo(() => {
     let result = sets;
 
-    // Filter by tab (regular vs multi-year)
+    // Filter by tab (regular vs multi-year vs rainbow)
     if (activeTab === "regular") {
-      result = result.filter((s) => s.set_type !== "multi_year_insert");
-    } else {
+      result = result.filter((s) => s.set_type !== "multi_year_insert" && s.set_type !== "rainbow");
+    } else if (activeTab === "multi_year") {
       result = result.filter((s) => s.set_type === "multi_year_insert");
+    } else if (activeTab === "rainbow") {
+      result = result.filter((s) => s.set_type === "rainbow");
     }
 
     // Filter by search term
@@ -267,6 +269,10 @@ export default function SetsIndex() {
             <TabsTrigger value="multi_year" className="gap-2">
               <Layers className="h-4 w-4" />
               Multi-Year Sets
+            </TabsTrigger>
+            <TabsTrigger value="rainbow" className="gap-2">
+              <Palette className="h-4 w-4" />
+              Rainbows
             </TabsTrigger>
           </TabsList>
 
@@ -639,6 +645,127 @@ export default function SetsIndex() {
                             </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">No cards</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => handleEditImage(set)}>
+                                <ImagePlus className="h-4 w-4 mr-2" />
+                                {set.cover_image_url ? "Change Image" : "Add Image"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(set)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(set)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rainbow" className="mt-6">
+          {loading ? (
+            <p className="text-muted-foreground">Loading...</p>
+          ) : filteredSets.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                {searchTerm ? "No rainbow sets match your search." : "No rainbow chases yet."}
+              </p>
+              {!searchTerm && (
+                <Button
+                  onClick={() => {
+                    setEditingSet(null);
+                    setFormOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Rainbow Set
+                </Button>
+              )}
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {multiYearSetsSorted.map((set) => (
+                <SetCard
+                  key={set.id}
+                  set={set}
+                  stats={statsMap.get(set.id) || { total: 0, owned: 0, pending: 0 }}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onEditImage={handleEditImage}
+                  onClick={() => setFlyoutSetId(set.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20"></TableHead>
+                    <TableHead>Player / Card</TableHead>
+                    <TableHead>Year</TableHead>
+                    <TableHead>Brand</TableHead>
+                    <TableHead>Product Line</TableHead>
+                    <TableHead className="w-40">Progress</TableHead>
+                    <TableHead className="w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {multiYearSetsSorted.map((set) => {
+                    const stats = statsMap.get(set.id) || { total: 0, owned: 0, pending: 0 };
+                    const pct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
+                    return (
+                      <TableRow
+                        key={set.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setFlyoutSetId(set.id)}
+                      >
+                        <TableCell className="py-2">
+                          {set.cover_image_url ? (
+                            <img
+                              src={set.cover_image_url}
+                              alt=""
+                              className="w-16 h-22 object-contain rounded border bg-muted"
+                            />
+                          ) : (
+                            <div className="w-16 h-22 rounded border bg-muted" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{set.name}</TableCell>
+                        <TableCell>{set.year}</TableCell>
+                        <TableCell>{set.brand}</TableCell>
+                        <TableCell>{set.product_line}</TableCell>
+                        <TableCell>
+                          {stats.total > 0 ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span>{stats.owned}/{stats.total}</span>
+                                <span className="text-muted-foreground">{pct}%</span>
+                              </div>
+                              <Progress value={pct} className="h-1.5" />
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No parallels</span>
                           )}
                         </TableCell>
                         <TableCell>
