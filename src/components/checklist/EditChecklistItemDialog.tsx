@@ -36,6 +36,7 @@ interface FormData {
   team: string;
   subset_name: string;
   parallel: string;
+  parallel_print_run: string;
   serial_owned: string;
   status: string;
   year: string;
@@ -60,6 +61,7 @@ export function EditChecklistItemDialog({
         team: item.team || "",
         subset_name: item.subset_name || "",
         parallel: item.parallel || "",
+        parallel_print_run: item.parallel_print_run || "",
         serial_owned: item.serial_owned || "",
         status: item.status,
         year: item.year ? String(item.year) : "",
@@ -78,6 +80,7 @@ export function EditChecklistItemDialog({
         team: data.team || null,
         subset_name: data.subset_name || null,
         parallel: data.parallel || null,
+        parallel_print_run: data.parallel_print_run || null,
         serial_owned: data.serial_owned || null,
         status: data.status as "need" | "pending" | "owned",
         year: data.year ? parseInt(data.year, 10) : null,
@@ -144,13 +147,19 @@ export function EditChecklistItemDialog({
             </div>
             <div className="space-y-2">
               <Label>Parallel</Label>
-              <Input {...register("parallel")} placeholder='e.g. "Gold /50"' />
+              <Input {...register("parallel")} placeholder='e.g. "Gold", "Refractor"' />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Serial # Owned</Label>
-            <Input {...register("serial_owned")} placeholder='e.g. "17"' />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Print Run</Label>
+              <Input {...register("parallel_print_run")} placeholder='e.g. "50" for /50' />
+            </div>
+            <div className="space-y-2">
+              <Label>Serial # Owned</Label>
+              <Input {...register("serial_owned")} placeholder='e.g. "17" for 17/50' />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">

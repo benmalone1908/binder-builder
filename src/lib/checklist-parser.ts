@@ -8,6 +8,14 @@ export interface ParsedCard {
   error?: string;
 }
 
+export interface ParsedParallel {
+  parallel: string;
+  parallel_print_run: string | null;
+  raw_line: string;
+  line_number: number;
+  error?: string;
+}
+
 export function parseChecklistText(text: string, defaultYear?: number | null): ParsedCard[] {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -56,6 +64,58 @@ export function parseChecklistText(text: string, defaultYear?: number | null): P
       raw_line: line,
       line_number: index + 1,
       error: player_name ? undefined : 'Could not parse player name',
+    };
+  });
+}
+
+/**
+ * Parses rainbow parallel text into structured data
+ * Expected format: "Sky Blue – /499" or "Platinum – 1/1"
+ * Extracts parallel name and print run
+ */
+export function parseRainbowText(text: string): ParsedParallel[] {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  return lines.map((line, index) => {
+    // Look for dash separator (regular dash, en-dash, or em-dash)
+    const dashMatch = line.match(/^(.+?)\s*[–—-]\s*(.+)$/);
+
+    if (!dashMatch) {
+      return {
+        parallel: line,
+        parallel_print_run: null,
+        raw_line: line,
+        line_number: index + 1,
+        error: 'Could not parse parallel format (expected "Name – /Number")',
+      };
+    }
+
+    const parallelName = dashMatch[1].trim();
+    const serialPart = dashMatch[2].trim();
+
+    // Extract print run number from formats like "/499" or "1/1"
+    let printRun: string | null = null;
+
+    // Match "/499" format
+    if (serialPart.startsWith('/')) {
+      printRun = serialPart.substring(1);
+    }
+    // Match "1/1" format
+    else if (serialPart.includes('/')) {
+      const parts = serialPart.split('/');
+      printRun = parts[1];
+    }
+    // Just a number
+    else if (/^\d+$/.test(serialPart)) {
+      printRun = serialPart;
+    }
+
+    return {
+      parallel: parallelName,
+      parallel_print_run: printRun,
+      raw_line: line,
+      line_number: index + 1,
+      error: !parallelName ? 'Missing parallel name' : undefined,
     };
   });
 }

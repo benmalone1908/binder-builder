@@ -702,7 +702,10 @@ export default function SetsIndex() {
         setId={flyoutSetId}
         open={!!flyoutSetId}
         onOpenChange={(open) => {
-          if (!open) setFlyoutSetId(null);
+          if (!open) {
+            setFlyoutSetId(null);
+            loadData(); // Refresh stats when flyout closes
+          }
         }}
       />
     </div>

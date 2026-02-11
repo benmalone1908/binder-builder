@@ -19,6 +19,8 @@ import {
 import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import { ImportChecklistDialog } from "@/components/checklist/ImportChecklistDialog";
 import { EditChecklistItemDialog } from "@/components/checklist/EditChecklistItemDialog";
+import { AddParallelDialog } from "@/components/checklist/AddParallelDialog";
+import { SerialNumberDialog } from "@/components/checklist/SerialNumberDialog";
 import { BulkStatusDialog } from "@/components/checklist/BulkStatusDialog";
 import { ChangeYearDialog } from "@/components/checklist/ChangeYearDialog";
 import {
@@ -76,11 +78,18 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
 
   const [editSetOpen, setEditSetOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [addParallelOpen, setAddParallelOpen] = useState(false);
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [changeYearOpen, setChangeYearOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [serialDialogOpen, setSerialDialogOpen] = useState(false);
+  const [serialDialogData, setSerialDialogData] = useState<{
+    itemId: string;
+    parallel: string | null;
+    printRun: string | null;
+  } | null>(null);
 
   const loadData = useCallback(async () => {
     if (!setId) return;
@@ -111,6 +120,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   }, [loadData]);
 
   const isMultiYear = set?.set_type === "multi_year_insert";
+  const isRainbow = set?.set_type === "rainbow";
 
   const stats = useMemo(() => {
     const total = items.length;
@@ -184,7 +194,25 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
       );
     }
 
-    result.sort((a, b) => compareCardNumbers(a.card_number, b.card_number));
+    // Sort by parallel print run (descending) for rainbow sets, otherwise by card number
+    if (isRainbow) {
+      result.sort((a, b) => {
+        // Cards without print run (base/unnumbered) come first
+        const aHasRun = a.parallel_print_run && a.parallel_print_run.trim();
+        const bHasRun = b.parallel_print_run && b.parallel_print_run.trim();
+
+        if (!aHasRun && !bHasRun) return 0;
+        if (!aHasRun) return -1; // a (no print run) comes before b
+        if (!bHasRun) return 1;  // b (no print run) comes before a
+
+        // Both have print runs - sort descending (largest first)
+        const aRun = parseInt(a.parallel_print_run, 10);
+        const bRun = parseInt(b.parallel_print_run, 10);
+        return bRun - aRun;
+      });
+    } else {
+      result.sort((a, b) => compareCardNumbers(a.card_number, b.card_number));
+    }
 
     return result;
   }, [items, statusFilter, searchTerm, isMultiYear, yearFilter]);
@@ -241,6 +269,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     setEditingItem(item);
     setEditItemOpen(true);
   }
+
+  function handleSerialNumberCapture(itemId: string, parallel: string | null, printRun: string | null) {
+    console.log('handleSerialNumberCapture called!', { itemId, parallel, printRun });
+    setSerialDialogData({ itemId, parallel, printRun });
+    setSerialDialogOpen(true);
+  }
+
+  console.log('SetDetailContent render - handleSerialNumberCapture exists:', !!handleSerialNumberCapture);
 
   function handleSelectChange(itemId: string, selected: boolean, shiftKey: boolean) {
     const visibleItems = cardsByYear
@@ -437,6 +473,15 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
               </Badge>
             </div>
           )}
+          {isRainbow && items.length > 0 && (
+            <div className={cn(
+              "mt-2",
+              isCompact ? "text-xs" : "text-sm"
+            )}>
+              <span className="font-medium">#{items[0].card_number} - {items[0].player_name}</span>
+              {items[0].team && <span className="text-muted-foreground ml-2">• {items[0].team}</span>}
+            </div>
+          )}
           {set.notes && !isCompact && (
             <p className="text-sm text-muted-foreground mt-2">{set.notes}</p>
           )}
@@ -476,7 +521,9 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             onBulkDelete={handleBulkDelete}
             onBulkYearChange={() => setChangeYearOpen(true)}
             isMultiYear={isMultiYear}
+            isRainbow={isRainbow}
             onClearSelection={() => setSelectedIds(new Set())}
+            onAddCard={() => setAddParallelOpen(true)}
             onImport={() => setImportOpen(true)}
             onExport={() => exportChecklistToCSV(set.name, items)}
             onBulkPaste={() => setBulkPasteOpen(true)}
@@ -538,12 +585,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     />
                   </TableHead>
-                  <TableHead className={cn("whitespace-nowrap", isCompact ? "w-16" : "w-24")}>Card #</TableHead>
-                  <TableHead>Player</TableHead>
-                  <TableHead className={isCompact ? "w-20" : ""}>Team</TableHead>
+                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-16" : "w-24")}>Card #</TableHead>}
+                  {!isRainbow && <TableHead>Player</TableHead>}
+                  {!isRainbow && <TableHead className={isCompact ? "w-20" : ""}>Team</TableHead>}
+                  {isRainbow && <TableHead className="w-64">Parallel</TableHead>}
                   {isMultiYear && yearFilter !== "all" && (
                     <TableHead className={isCompact ? "w-12" : "w-16"}>Year</TableHead>
                   )}
+                  <TableHead className={isRainbow ? "w-32" : (isCompact ? "w-16" : "w-20")}>Serial #</TableHead>
                   <TableHead className={isCompact ? "w-20" : "w-28"}>Status</TableHead>
                   <TableHead className={isCompact ? "w-12" : "w-10"}></TableHead>
                 </TableRow>
@@ -563,7 +612,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                           className="bg-muted/50 hover:bg-muted cursor-pointer"
                           onClick={() => toggleYearExpanded(group.year)}
                         >
-                          <TableCell colSpan={6} className="py-2">
+                          <TableCell colSpan={isRainbow ? 5 : 7} className="py-2">
                             <div className="flex items-center gap-2">
                               {isExpanded ? (
                                 <ChevronDown className="h-4 w-4" />
@@ -598,17 +647,19 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                                   item={item}
                                   setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
                                   isMultiYear={false}
+                                  isRainbow={isRainbow}
                                   selected={selectedIds.has(item.id)}
                                   onSelectChange={handleSelectChange}
                                   onStatusChange={handleStatusChange}
                                   onFieldChange={handleFieldChange}
                                   onEdit={handleEditItem}
+                                  onSerialNumberCapture={handleSerialNumberCapture}
                                 />
                               ))}
                               {Array.from(parallelGroups.entries()).map(([parallelName, cards]) => (
                                 <Fragment key={`parallel-${group.year}-${parallelName}`}>
                                   <TableRow className="bg-muted/30">
-                                    <TableCell colSpan={6} className="py-1.5">
+                                    <TableCell colSpan={isRainbow ? 5 : 7} className="py-1.5">
                                       <span className="text-xs font-medium text-muted-foreground ml-4">
                                         {parallelName}
                                       </span>
@@ -625,6 +676,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                                       onStatusChange={handleStatusChange}
                                       onFieldChange={handleFieldChange}
                                       onEdit={handleEditItem}
+                                      onSerialNumberCapture={handleSerialNumberCapture}
                                     />
                                   ))}
                                 </Fragment>
@@ -644,11 +696,13 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                           item={item}
                           setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
                           isMultiYear={false}
+                          isRainbow={isRainbow}
                           selected={selectedIds.has(item.id)}
                           onSelectChange={handleSelectChange}
                           onStatusChange={handleStatusChange}
                           onFieldChange={handleFieldChange}
                           onEdit={handleEditItem}
+                          onSerialNumberCapture={handleSerialNumberCapture}
                         />
                       ));
                     }
@@ -673,17 +727,19 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                             item={item}
                             setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
                             isMultiYear={isMultiYear}
+                            isRainbow={isRainbow}
                             selected={selectedIds.has(item.id)}
                             onSelectChange={handleSelectChange}
                             onStatusChange={handleStatusChange}
                             onFieldChange={handleFieldChange}
                             onEdit={handleEditItem}
+                            onSerialNumberCapture={handleSerialNumberCapture}
                           />
                         ))}
                         {Array.from(parallelGroups.entries()).map(([parallelName, cards]) => (
                           <Fragment key={`parallel-flat-${parallelName}`}>
                             <TableRow className="bg-muted/30">
-                              <TableCell colSpan={isMultiYear && yearFilter !== "all" ? 7 : 6} className="py-1.5">
+                              <TableCell colSpan={isMultiYear && yearFilter !== "all" ? (isRainbow ? 6 : 8) : (isRainbow ? 5 : 7)} className="py-1.5">
                                 <span className="text-xs font-medium text-muted-foreground ml-4">
                                   {parallelName}
                                 </span>
@@ -700,6 +756,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                                 onStatusChange={handleStatusChange}
                                 onFieldChange={handleFieldChange}
                                 onEdit={handleEditItem}
+                                onSerialNumberCapture={handleSerialNumberCapture}
                               />
                             ))}
                           </Fragment>
@@ -732,6 +789,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         open={importOpen}
         onOpenChange={setImportOpen}
         setId={set.id}
+        setType={set?.set_type}
         isMultiYear={isMultiYear}
         onSuccess={loadData}
       />
@@ -743,6 +801,29 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         isMultiYear={isMultiYear}
         onSuccess={loadData}
       />
+
+      {isRainbow && items.length > 0 && (
+        <AddParallelDialog
+          open={addParallelOpen}
+          onOpenChange={setAddParallelOpen}
+          setId={set.id}
+          cardNumber={items[0].card_number}
+          playerName={items[0].player_name}
+          team={items[0].team}
+          onSuccess={loadData}
+        />
+      )}
+
+      {serialDialogData && (
+        <SerialNumberDialog
+          open={serialDialogOpen}
+          onOpenChange={setSerialDialogOpen}
+          itemId={serialDialogData.itemId}
+          parallel={serialDialogData.parallel}
+          printRun={serialDialogData.printRun}
+          onSuccess={loadData}
+        />
+      )}
 
       <BulkStatusDialog
         open={bulkPasteOpen}

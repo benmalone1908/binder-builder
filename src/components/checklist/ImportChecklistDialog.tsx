@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { parseChecklistText, type ParsedCard } from "@/lib/checklist-parser";
+import { parseChecklistText, parseRainbowText, type ParsedCard, type ParsedParallel } from "@/lib/checklist-parser";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,7 @@ interface ImportChecklistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setId: string;
+  setType?: string;
   isMultiYear?: boolean;
   onSuccess: () => void;
 }
@@ -37,20 +38,34 @@ export function ImportChecklistDialog({
   open,
   onOpenChange,
   setId,
+  setType,
   isMultiYear,
   onSuccess,
 }: ImportChecklistDialogProps) {
+  const isRainbow = setType === "rainbow";
+
   const [phase, setPhase] = useState<Phase>("paste");
   const [rawText, setRawText] = useState("");
   const [parsed, setParsed] = useState<ParsedCard[]>([]);
+  const [parsedParallels, setParsedParallels] = useState<ParsedParallel[]>([]);
   const [importYear, setImportYear] = useState("");
   const [isParallel, setIsParallel] = useState(false);
   const [parallelLabel, setParallelLabel] = useState("");
 
+  // Rainbow mode specific state
+  const [rainbowCardNumber, setRainbowCardNumber] = useState("");
+  const [rainbowPlayerName, setRainbowPlayerName] = useState("");
+  const [rainbowTeam, setRainbowTeam] = useState("");
+
   function handlePreview() {
-    const yearNum = importYear ? parseInt(importYear, 10) : null;
-    const results = parseChecklistText(rawText, yearNum);
-    setParsed(results);
+    if (isRainbow) {
+      const results = parseRainbowText(rawText);
+      setParsedParallels(results);
+    } else {
+      const yearNum = importYear ? parseInt(importYear, 10) : null;
+      const results = parseChecklistText(rawText, yearNum);
+      setParsed(results);
+    }
     setPhase("preview");
   }
 
@@ -58,7 +73,89 @@ export function ImportChecklistDialog({
     setPhase("paste");
   }
 
+  async function handleRainbowImport() {
+    const validParallels = parsedParallels.filter((p) => !p.error);
+    if (validParallels.length === 0) return;
+
+    // Validate rainbow-specific fields
+    if (!rainbowCardNumber.trim() || !rainbowPlayerName.trim()) {
+      toast.error("Card number and player name are required for rainbow import");
+      return;
+    }
+
+    setPhase("importing");
+
+    // Fetch existing parallels to avoid duplicates
+    const { data: existingCards, error: fetchError } = await supabase
+      .from("checklist_items")
+      .select("parallel")
+      .eq("set_id", setId)
+      .eq("card_number", rainbowCardNumber.trim());
+
+    if (fetchError) {
+      console.error("Error fetching existing cards:", fetchError);
+      toast.error("Failed to check for duplicates: " + fetchError.message);
+      setPhase("preview");
+      return;
+    }
+
+    const existingParallels = new Set(
+      existingCards?.map((c) => c.parallel?.toLowerCase() || "") || []
+    );
+
+    const newParallels = validParallels.filter(
+      (p) => !existingParallels.has(p.parallel.toLowerCase())
+    );
+    const skipped = validParallels.length - newParallels.length;
+
+    if (newParallels.length === 0) {
+      toast.info(`All ${skipped} parallels already exist for this card`);
+      setPhase("preview");
+      return;
+    }
+
+    const rows = newParallels.map((p) => ({
+      set_id: setId,
+      card_number: rainbowCardNumber.trim(),
+      player_name: rainbowPlayerName.trim(),
+      team: rainbowTeam.trim() || null,
+      year: null,
+      parallel: p.parallel,
+      parallel_print_run: p.parallel_print_run,
+    }));
+
+    const { data, error } = await supabase
+      .from("checklist_items")
+      .insert(rows)
+      .select();
+
+    if (error) {
+      toast.error(`Import failed: ${error.message}`);
+      setPhase("preview");
+      return;
+    }
+
+    const message = skipped > 0
+      ? `Imported ${data?.length || rows.length} parallels (${skipped} duplicates skipped)`
+      : `Imported ${data?.length || rows.length} parallels`;
+    toast.success(message);
+
+    // Reset form
+    setRawText("");
+    setParsedParallels([]);
+    setRainbowCardNumber("");
+    setRainbowPlayerName("");
+    setRainbowTeam("");
+    setPhase("paste");
+    onOpenChange(false);
+    onSuccess();
+  }
+
   async function handleImport() {
+    if (isRainbow) {
+      return handleRainbowImport();
+    }
+
     const validCards = parsed.filter((c) => !c.error);
     if (validCards.length === 0) return;
 
@@ -169,35 +266,96 @@ export function ImportChecklistDialog({
     if (!open) {
       setRawText("");
       setParsed([]);
+      setParsedParallels([]);
       setPhase("paste");
       setImportYear("");
       setIsParallel(false);
       setParallelLabel("");
+      setRainbowCardNumber("");
+      setRainbowPlayerName("");
+      setRainbowTeam("");
     }
     onOpenChange(open);
   }
 
-  const validCount = parsed.filter((c) => !c.error).length;
-  const errorCount = parsed.filter((c) => c.error).length;
+  const validCount = isRainbow
+    ? parsedParallels.filter((p) => !p.error).length
+    : parsed.filter((c) => !c.error).length;
+  const errorCount = isRainbow
+    ? parsedParallels.filter((p) => p.error).length
+    : parsed.filter((c) => c.error).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Import Checklist</DialogTitle>
+          <DialogTitle>
+            {isRainbow ? "Import Rainbow Parallels" : "Import Checklist"}
+          </DialogTitle>
         </DialogHeader>
 
         {phase === "paste" && (
           <div className="space-y-4 flex-1">
-            <p className="text-sm text-muted-foreground">
-              Paste checklist data below, one card per line. Expected format:
-            </p>
-            <pre className="text-xs bg-muted rounded p-2">
-              577 Trevor Story - Boston Red Sox{"\n"}
-              581 Andruw Monasterio - Milwaukee Brewers{"\n"}
-              100 Pete Crow-Armstrong - Chicago Cubs
-            </pre>
-            {isMultiYear && (
+            {isRainbow ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Import parallel variations for a rainbow chase. First, enter the card details, then paste the list of parallels.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rainbow-card-number">Card Number *</Label>
+                    <Input
+                      id="rainbow-card-number"
+                      placeholder="e.g. 1"
+                      value={rainbowCardNumber}
+                      onChange={(e) => setRainbowCardNumber(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rainbow-team">Team</Label>
+                    <Input
+                      id="rainbow-team"
+                      placeholder="e.g. Angels"
+                      value={rainbowTeam}
+                      onChange={(e) => setRainbowTeam(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rainbow-player-name">Player Name *</Label>
+                  <Input
+                    id="rainbow-player-name"
+                    placeholder="e.g. Shohei Ohtani"
+                    value={rainbowPlayerName}
+                    onChange={(e) => setRainbowPlayerName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Parallel Variations</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Paste parallel list, one per line:
+                  </p>
+                  <pre className="text-xs bg-muted rounded p-2">
+                    Sky Blue – /499{"\n"}
+                    Purple – /250{"\n"}
+                    Gold – /50{"\n"}
+                    Platinum – 1/1
+                  </pre>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Paste checklist data below, one card per line. Expected format:
+                </p>
+                <pre className="text-xs bg-muted rounded p-2">
+                  577 Trevor Story - Boston Red Sox{"\n"}
+                  581 Andruw Monasterio - Milwaukee Brewers{"\n"}
+                  100 Pete Crow-Armstrong - Chicago Cubs
+                </pre>
+              </>
+            )}
+            {!isRainbow && isMultiYear && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="import-year">Year for these cards</Label>
@@ -233,8 +391,12 @@ export function ImportChecklistDialog({
               </div>
             )}
             <Textarea
-              placeholder="Paste checklist here..."
-              rows={isMultiYear ? 10 : 12}
+              placeholder={
+                isRainbow
+                  ? "Paste parallel list here..."
+                  : "Paste checklist here..."
+              }
+              rows={isRainbow ? 8 : isMultiYear ? 10 : 12}
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               className="text-sm"
@@ -243,7 +405,13 @@ export function ImportChecklistDialog({
               <Button variant="outline" onClick={() => handleClose(false)}>
                 Cancel
               </Button>
-              <Button onClick={handlePreview} disabled={!rawText.trim()}>
+              <Button
+                onClick={handlePreview}
+                disabled={
+                  !rawText.trim() ||
+                  (isRainbow && (!rainbowCardNumber.trim() || !rainbowPlayerName.trim()))
+                }
+              >
                 Preview
               </Button>
             </div>
@@ -253,49 +421,90 @@ export function ImportChecklistDialog({
         {phase === "preview" && (
           <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{validCount} cards</Badge>
+              <Badge variant="secondary">
+                {validCount} {isRainbow ? "parallels" : "cards"}
+              </Badge>
               {errorCount > 0 && (
                 <Badge variant="destructive">{errorCount} errors</Badge>
               )}
             </div>
+            {isRainbow && (
+              <div className="text-sm space-y-1">
+                <p><strong>Card #:</strong> {rainbowCardNumber}</p>
+                <p><strong>Player:</strong> {rainbowPlayerName}</p>
+                {rainbowTeam && <p><strong>Team:</strong> {rainbowTeam}</p>}
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto border rounded">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-16">Line</TableHead>
-                    <TableHead className="w-20">Card #</TableHead>
-                    <TableHead>Player Name</TableHead>
-                    <TableHead>Team</TableHead>
-                    {isMultiYear && <TableHead className="w-16">Year</TableHead>}
+                    {isRainbow ? (
+                      <>
+                        <TableHead>Parallel</TableHead>
+                        <TableHead className="w-24">Print Run</TableHead>
+                      </>
+                    ) : (
+                      <>
+                        <TableHead className="w-20">Card #</TableHead>
+                        <TableHead>Player Name</TableHead>
+                        <TableHead>Team</TableHead>
+                        {isMultiYear && <TableHead className="w-16">Year</TableHead>}
+                      </>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parsed.map((card) => (
-                    <TableRow
-                      key={card.line_number}
-                      className={card.error ? "bg-destructive/10" : ""}
-                    >
-                      <TableCell className="text-muted-foreground">
-                        {card.line_number}
-                      </TableCell>
-                      <TableCell>{card.card_number}</TableCell>
-                      <TableCell>
-                        {card.error ? (
-                          <span className="text-destructive text-sm">{card.error}</span>
-                        ) : (
-                          card.player_name
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {card.team || "—"}
-                      </TableCell>
-                      {isMultiYear && (
+                  {isRainbow ? (
+                    parsedParallels.map((parallel) => (
+                      <TableRow
+                        key={parallel.line_number}
+                        className={parallel.error ? "bg-destructive/10" : ""}
+                      >
                         <TableCell className="text-muted-foreground">
-                          {card.year || "—"}
+                          {parallel.line_number}
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                        <TableCell>
+                          {parallel.error ? (
+                            <span className="text-destructive text-sm">{parallel.error}</span>
+                          ) : (
+                            parallel.parallel
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {parallel.parallel_print_run ? `/${parallel.parallel_print_run}` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    parsed.map((card) => (
+                      <TableRow
+                        key={card.line_number}
+                        className={card.error ? "bg-destructive/10" : ""}
+                      >
+                        <TableCell className="text-muted-foreground">
+                          {card.line_number}
+                        </TableCell>
+                        <TableCell>{card.card_number}</TableCell>
+                        <TableCell>
+                          {card.error ? (
+                            <span className="text-destructive text-sm">{card.error}</span>
+                          ) : (
+                            card.player_name
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {card.team || "—"}
+                        </TableCell>
+                        {isMultiYear && (
+                          <TableCell className="text-muted-foreground">
+                            {card.year || "—"}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -304,7 +513,7 @@ export function ImportChecklistDialog({
                 Back
               </Button>
               <Button onClick={handleImport} disabled={validCount === 0}>
-                Import {validCount} Cards
+                Import {validCount} {isRainbow ? "Parallels" : "Cards"}
               </Button>
             </div>
           </div>

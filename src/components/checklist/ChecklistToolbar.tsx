@@ -1,4 +1,4 @@
-import { Search, Upload, Download, ListChecks, X, Trash2, CalendarCog } from "lucide-react";
+import { Search, Upload, Download, ListChecks, X, Trash2, CalendarCog, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +23,9 @@ interface ChecklistToolbarProps {
   onBulkDelete?: () => void;
   onBulkYearChange?: () => void;
   isMultiYear?: boolean;
+  isRainbow?: boolean;
   onClearSelection: () => void;
+  onAddCard: () => void;
   onImport: () => void;
   onExport: () => void;
   onBulkPaste: () => void;
@@ -40,7 +42,9 @@ export function ChecklistToolbar({
   onBulkDelete,
   onBulkYearChange,
   isMultiYear,
+  isRainbow,
   onClearSelection,
+  onAddCard,
   onImport,
   onExport,
   onBulkPaste,
@@ -117,14 +121,24 @@ export function ChecklistToolbar({
         </Tabs>
 
         <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={onBulkPaste}>
-            <ListChecks className="h-4 w-4 mr-2" />
-            Bulk Update
+          <Button variant="outline" onClick={onAddCard}>
+            <Plus className="h-4 w-4 mr-2" />
+            {isRainbow ? "Add Parallel" : "Add Card"}
           </Button>
-          <Button variant="outline" onClick={onImport}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
+          {/* Hide Bulk Update for rainbow sets */}
+          {!isRainbow && (
+            <Button variant="outline" onClick={onBulkPaste}>
+              <ListChecks className="h-4 w-4 mr-2" />
+              Bulk Update
+            </Button>
+          )}
+          {/* Hide Import for rainbow sets with existing cards */}
+          {!(isRainbow && stats.total > 0) && (
+            <Button variant="outline" onClick={onImport}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+          )}
           <Button variant="outline" onClick={onExport} disabled={stats.total === 0}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV

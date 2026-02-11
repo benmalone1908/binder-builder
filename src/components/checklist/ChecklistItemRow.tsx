@@ -21,11 +21,13 @@ interface ChecklistItemRowProps {
   item: ChecklistItem;
   setInfo: SetInfo;
   isMultiYear?: boolean;
+  isRainbow?: boolean;
   selected: boolean;
   onSelectChange: (id: string, selected: boolean, shiftKey: boolean) => void;
   onStatusChange: (id: string, newStatus: "need" | "pending" | "owned") => void;
   onFieldChange: (id: string, field: string, value: string) => void;
   onEdit: (item: ChecklistItem) => void;
+  onSerialNumberCapture?: (itemId: string, parallel: string | null, printRun: string | null) => void;
 }
 
 type EditingField = "card_number" | "player_name" | "team" | null;
@@ -34,11 +36,13 @@ export function ChecklistItemRow({
   item,
   setInfo,
   isMultiYear,
+  isRainbow,
   selected,
   onSelectChange,
   onStatusChange,
   onFieldChange,
   onEdit,
+  onSerialNumberCapture,
 }: ChecklistItemRowProps) {
   const [editingField, setEditingField] = useState<EditingField>(null);
   const [editValue, setEditValue] = useState("");
@@ -53,6 +57,20 @@ export function ChecklistItemRow({
 
   async function setStatus(newStatus: "need" | "pending" | "owned") {
     if (item.status === newStatus) return;
+
+    console.log('setStatus called:', {
+      newStatus,
+      hasPrintRun: !!item.parallel_print_run,
+      printRun: item.parallel_print_run,
+      hasCallback: !!onSerialNumberCapture,
+    });
+
+    // If marking as owned and card has a print run, prompt for serial number
+    if (newStatus === "owned" && item.parallel_print_run && onSerialNumberCapture) {
+      console.log('Opening serial number dialog');
+      onSerialNumberCapture(item.id, item.parallel, item.parallel_print_run);
+      return;
+    }
 
     const { error } = await supabase
       .from("checklist_items")
@@ -161,20 +179,40 @@ export function ChecklistItemRow({
           onClick={(e) => onSelectChange(item.id, !selected, e.shiftKey)}
         />
       </TableCell>
-      <TableCell className="w-24 whitespace-nowrap py-1.5">
-        {renderEditableCell("card_number")}
-      </TableCell>
-      <TableCell className="font-medium py-1.5">
-        {renderEditableCell("player_name")}
-      </TableCell>
-      <TableCell className="text-muted-foreground py-1.5">
-        {renderEditableCell("team")}
-      </TableCell>
+      {!isRainbow && (
+        <TableCell className="w-24 whitespace-nowrap py-1.5">
+          {renderEditableCell("card_number")}
+        </TableCell>
+      )}
+      {!isRainbow && (
+        <>
+          <TableCell className="font-medium py-1.5">
+            {renderEditableCell("player_name")}
+          </TableCell>
+          <TableCell className="text-muted-foreground py-1.5">
+            {renderEditableCell("team")}
+          </TableCell>
+        </>
+      )}
+      {isRainbow && (
+        <TableCell className="font-medium py-1.5">
+          {item.parallel || "—"}
+        </TableCell>
+      )}
       {isMultiYear && (
         <TableCell className="text-muted-foreground py-1.5">
           {item.year || "—"}
         </TableCell>
       )}
+      <TableCell className="text-muted-foreground py-1.5 text-sm">
+        {item.serial_owned && item.parallel_print_run
+          ? `${item.serial_owned}/${item.parallel_print_run}`
+          : item.serial_owned
+          ? item.serial_owned
+          : item.parallel_print_run
+          ? `—/${item.parallel_print_run}`
+          : "—"}
+      </TableCell>
       <TableCell className="py-1.5">
         <div className="flex items-center gap-1">
           <Button
