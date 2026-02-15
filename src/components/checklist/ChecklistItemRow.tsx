@@ -213,7 +213,7 @@ export function ChecklistItemRow({
         />
       </TableCell>
       {!isRainbow && (
-        <TableCell className="w-20 whitespace-nowrap py-1.5">
+        <TableCell className="w-16 whitespace-nowrap py-1.5">
           {renderEditableCell("card_number")}
         </TableCell>
       )}
@@ -237,15 +237,17 @@ export function ChecklistItemRow({
           {item.year || "—"}
         </TableCell>
       )}
-      <TableCell className="text-muted-foreground py-1.5 text-sm whitespace-nowrap">
-        {item.serial_owned && item.parallel_print_run
-          ? `${item.serial_owned}/${item.parallel_print_run}`
-          : item.serial_owned
-          ? item.serial_owned
-          : item.parallel_print_run
-          ? `—/${item.parallel_print_run}`
-          : "—"}
-      </TableCell>
+      {isRainbow && (
+        <TableCell className="text-muted-foreground py-1.5 text-sm whitespace-nowrap">
+          {item.serial_owned && item.parallel_print_run
+            ? `${item.serial_owned}/${item.parallel_print_run}`
+            : item.serial_owned
+            ? item.serial_owned
+            : item.parallel_print_run
+            ? `—/${item.parallel_print_run}`
+            : "—"}
+        </TableCell>
+      )}
       <TableCell className="py-1.5">
         <div className="flex items-center gap-1">
           <Button

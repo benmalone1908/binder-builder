@@ -16,6 +16,10 @@ export interface ParsedParallel {
   error?: string;
 }
 
+function removeAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export function parseChecklistText(text: string, defaultYear?: number | null): ParsedCard[] {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -58,8 +62,8 @@ export function parseChecklistText(text: string, defaultYear?: number | null): P
 
     return {
       card_number,
-      player_name,
-      team: team || null,
+      player_name: removeAccents(player_name),
+      team: team ? removeAccents(team) : null,
       year: defaultYear || null,
       raw_line: line,
       line_number: index + 1,

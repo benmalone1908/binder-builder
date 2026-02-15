@@ -680,14 +680,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     />
                   </TableHead>
-                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-16" : "w-20")}>Card #</TableHead>}
+                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-14" : "w-16")}>Card #</TableHead>}
                   {!isRainbow && <TableHead className={isCompact ? "w-[35%]" : "w-[40%]"}>Player</TableHead>}
                   {!isRainbow && <TableHead className={isCompact ? "w-24" : "w-32"}>Team</TableHead>}
                   {isRainbow && <TableHead className="w-64">Parallel</TableHead>}
                   {isMultiYear && yearFilter !== "all" && (
                     <TableHead className={isCompact ? "w-12" : "w-14"}>Year</TableHead>
                   )}
-                  <TableHead className={isRainbow ? "w-28" : (isCompact ? "w-20" : "w-24")}>Serial #</TableHead>
+                  {isRainbow && <TableHead className="w-28">Serial #</TableHead>}
                   <TableHead className={isCompact ? "w-24" : "w-28"}>Status</TableHead>
                   <TableHead className={isCompact ? "w-14" : "w-16"}></TableHead>
                 </TableRow>
