@@ -86,7 +86,10 @@ export function AddParallelDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Parallel to {cardNumber} - {playerName}</DialogTitle>
+          <DialogTitle className="text-lg">Add Parallel</DialogTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            {cardNumber} - {playerName} {team && `• ${team}`}
+          </p>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

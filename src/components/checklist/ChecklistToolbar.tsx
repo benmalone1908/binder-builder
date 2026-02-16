@@ -1,8 +1,20 @@
-import { Search, Upload, Download, ListChecks, X, Trash2, CalendarCog, Plus } from "lucide-react";
+import { Search, MoreHorizontal, X, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+
 export type StatusFilter = "all" | "need" | "pending" | "owned";
 
 interface ChecklistStats {
@@ -52,99 +64,209 @@ export function ChecklistToolbar({
   const completionPct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
 
   return (
-    <div className="space-y-4">
-      {/* Selection action bar */}
-      {selectedCount > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-accent rounded-lg flex-wrap">
-          <span className="text-sm font-medium">{selectedCount} selected</span>
-          <Button size="sm" variant="outline" onClick={() => onBulkStatusChange("need")}>
-            Set Need
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onBulkStatusChange("pending")}>
-            Set Pending
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onBulkStatusChange("owned")}>
-            Set Have
-          </Button>
-          {isMultiYear && onBulkYearChange && (
-            <Button size="sm" variant="outline" onClick={onBulkYearChange}>
-              <CalendarCog className="h-4 w-4 mr-1" />
-              Change Year
-            </Button>
-          )}
-          {onBulkDelete && (
-            <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={onBulkDelete}>
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" onClick={onClearSelection} className="ml-auto">
-            <X className="h-4 w-4 mr-1" />
-            Clear
-          </Button>
-        </div>
-      )}
-
-      {/* Stats bar */}
-      {stats.total > 0 && (
-        <div className="flex items-center gap-4 text-sm">
-          <span className="font-medium">
-            {stats.owned}/{stats.total} have ({completionPct}%)
-          </span>
-          <Progress value={completionPct} className="flex-1 max-w-xs h-2" />
-          {stats.pending > 0 && (
-            <span className="text-muted-foreground">{stats.pending} pending</span>
-          )}
-          <span className="text-muted-foreground">{stats.need} need</span>
-        </div>
-      )}
-
-      {/* Controls */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-2">
+      {/* Main toolbar - single row */}
+      <div className="flex items-center gap-2">
+        {/* Search */}
+        <div className="relative w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search cards..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9"
+            className="h-8 pl-8 pr-2 text-sm"
           />
         </div>
 
-        <Tabs value={statusFilter} onValueChange={(v) => onStatusFilterChange(v as StatusFilter)}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="need">Need</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="owned">Have</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Status filter dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <span className="text-xs font-medium">
+                {statusFilter === "all" && "All"}
+                {statusFilter === "need" && "Need"}
+                {statusFilter === "pending" && "Pending"}
+                {statusFilter === "owned" && "Have"}
+              </span>
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-32">
+            <DropdownMenuItem
+              onClick={() => onStatusFilterChange("all")}
+              className={cn("text-xs", statusFilter === "all" && "bg-accent")}
+            >
+              All
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onStatusFilterChange("need")}
+              className={cn("text-xs", statusFilter === "need" && "bg-accent")}
+            >
+              Need
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onStatusFilterChange("pending")}
+              className={cn("text-xs", statusFilter === "pending" && "bg-accent")}
+            >
+              Pending
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onStatusFilterChange("owned")}
+              className={cn("text-xs", statusFilter === "owned" && "bg-accent")}
+            >
+              Have
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={onAddCard}>
-            <Plus className="h-4 w-4 mr-2" />
-            {isRainbow ? "Add Parallel" : "Add Card"}
-          </Button>
-          {/* Hide Bulk Update for rainbow sets */}
-          {!isRainbow && (
-            <Button variant="outline" onClick={onBulkPaste}>
-              <ListChecks className="h-4 w-4 mr-2" />
-              Bulk Update
-            </Button>
+        {/* Stats - inline compact display */}
+        <div className="flex items-center gap-3 px-3 py-1 rounded-md bg-[#0F2A44]/5 border border-[#0F2A44]/10">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-[#0F2A44]">{stats.owned}/{stats.total}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">({completionPct}%)</span>
+          </div>
+          {stats.pending > 0 && (
+            <>
+              <div className="w-px h-3 bg-border" />
+              <span className="text-[10px] text-muted-foreground">
+                <span className="font-medium">{stats.pending}</span> pending
+              </span>
+            </>
           )}
-          {/* Hide Import for rainbow sets with existing cards */}
-          {!(isRainbow && stats.total > 0) && (
-            <Button variant="outline" onClick={onImport}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import
+          <div className="w-px h-3 bg-border" />
+          <span className="text-[10px] text-muted-foreground">
+            <span className="font-medium">{stats.need}</span> need
+          </span>
+        </div>
+
+        {/* Selection state */}
+        {selectedCount > 0 && (
+          <>
+            <div className="w-px h-4 bg-border ml-1" />
+            <Badge variant="secondary" className="h-6 gap-1 px-2">
+              <span className="text-xs font-medium">{selectedCount} selected</span>
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearSelection}
+              className="h-6 px-2 text-xs"
+            >
+              <X className="h-3 w-3" />
             </Button>
+          </>
+        )}
+
+        {/* Actions menu */}
+        <div className="ml-auto flex items-center gap-1">
+          {selectedCount > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                  <span className="text-xs font-medium">Batch Actions</span>
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuLabel className="text-xs">Set Status</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => onBulkStatusChange("need")}
+                  className="text-xs"
+                >
+                  Mark as Need
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onBulkStatusChange("pending")}
+                  className="text-xs"
+                >
+                  Mark as Pending
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onBulkStatusChange("owned")}
+                  className="text-xs"
+                >
+                  Mark as Have
+                </DropdownMenuItem>
+                {isMultiYear && onBulkYearChange && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={onBulkYearChange}
+                      className="text-xs"
+                    >
+                      Change Year
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {onBulkDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={onBulkDelete}
+                      className="text-xs text-destructive focus:text-destructive"
+                    >
+                      Delete Selected
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
-          <Button variant="outline" onClick={onExport} disabled={stats.total === 0}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                <span className="text-xs font-medium">Actions</span>
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              {isRainbow ? (
+                <DropdownMenuItem onClick={onAddCard} className="text-xs">
+                  Add Parallel
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-xs">
+                    Add Card(s)
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={onAddCard} className="text-xs">
+                      Single Card
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={onImport} className="text-xs">
+                      Bulk Cards
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              {!isRainbow && (
+                <DropdownMenuItem onClick={onBulkPaste} className="text-xs">
+                  Bulk Status Update
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onExport}
+                disabled={stats.total === 0}
+                className="text-xs"
+              >
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
+
+      {/* Completion bar - subtle visual feedback */}
+      {stats.total > 0 && (
+        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[#F97316] to-[#F97316]/80 transition-all duration-300"
+            style={{ width: `${completionPct}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

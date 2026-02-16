@@ -35,6 +35,7 @@ import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import { NotesDialog } from "@/components/sets/NotesDialog";
 import { ImportChecklistDialog } from "@/components/checklist/ImportChecklistDialog";
 import { EditChecklistItemDialog } from "@/components/checklist/EditChecklistItemDialog";
+import { AddCardDialog } from "@/components/checklist/AddCardDialog";
 import { AddParallelDialog } from "@/components/checklist/AddParallelDialog";
 import { SerialNumberDialog } from "@/components/checklist/SerialNumberDialog";
 import { BulkStatusDialog } from "@/components/checklist/BulkStatusDialog";
@@ -95,6 +96,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   const [editSetOpen, setEditSetOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [addCardOpen, setAddCardOpen] = useState(false);
   const [addParallelOpen, setAddParallelOpen] = useState(false);
   const [editItemOpen, setEditItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
@@ -489,9 +491,9 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   }
 
   return (
-    <div className={cn("space-y-6", isCompact && "space-y-4")}>
+    <div className={cn("space-y-3", isCompact && "space-y-2")}>
       {/* Header */}
-      <div className={cn("flex items-start gap-4", isCompact && "gap-3")}>
+      <div className={cn("flex items-start gap-3", isCompact && "gap-2")}>
         <Button variant="ghost" size="icon" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -617,7 +619,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             isMultiYear={isMultiYear}
             isRainbow={isRainbow}
             onClearSelection={() => setSelectedIds(new Set())}
-            onAddCard={() => setAddParallelOpen(true)}
+            onAddCard={() => isRainbow ? setAddParallelOpen(true) : setAddCardOpen(true)}
             onImport={() => setImportOpen(true)}
             onExport={() => exportChecklistToCSV(set.name, items)}
             onBulkPaste={() => setBulkPasteOpen(true)}
@@ -670,26 +672,27 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             "border rounded-lg overflow-hidden",
             isCompact && "overflow-x-auto"
           )}>
-            <Table className={cn(isCompact ? "min-w-[600px]" : "", "table-fixed")}>
+            <Table className={cn(isCompact ? "min-w-[600px]" : "", "table-fixed compact-checklist-table")}>
               <TableHeader>
-                <TableRow>
-                  {isRainbow && <TableHead className="w-8"></TableHead>}
-                  <TableHead className={isCompact ? "w-8" : "w-10"}>
+                <TableRow className="border-b border-border/60 bg-muted/30">
+                  {isRainbow && <TableHead className="w-6 h-7 py-1 px-2"></TableHead>}
+                  <TableHead className="w-8 h-7 py-1 px-2">
                     <Checkbox
                       checked={allVisibleSelected}
                       onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                      className="h-3.5 w-3.5"
                     />
                   </TableHead>
-                  {!isRainbow && <TableHead className={cn("whitespace-nowrap", isCompact ? "w-14" : "w-16")}>Card #</TableHead>}
-                  {!isRainbow && <TableHead className={isCompact ? "w-[35%]" : "w-[40%]"}>Player</TableHead>}
-                  {!isRainbow && <TableHead className={isCompact ? "w-24" : "w-32"}>Team</TableHead>}
-                  {isRainbow && <TableHead className="w-64">Parallel</TableHead>}
+                  {!isRainbow && <TableHead className="w-14 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Card #</TableHead>}
+                  {!isRainbow && <TableHead className="w-[40%] h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Player</TableHead>}
+                  {!isRainbow && <TableHead className="w-28 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Team</TableHead>}
+                  {isRainbow && <TableHead className="w-56 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Parallel</TableHead>}
                   {isMultiYear && yearFilter !== "all" && (
-                    <TableHead className={isCompact ? "w-12" : "w-14"}>Year</TableHead>
+                    <TableHead className="w-12 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Year</TableHead>
                   )}
-                  {isRainbow && <TableHead className="w-28">Serial #</TableHead>}
-                  <TableHead className={isCompact ? "w-24" : "w-28"}>Status</TableHead>
-                  <TableHead className={isCompact ? "w-14" : "w-16"}></TableHead>
+                  {isRainbow && <TableHead className="w-20 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Serial</TableHead>}
+                  <TableHead className="w-20 h-7 py-1 px-1 text-[11px] font-semibold text-muted-foreground">Status</TableHead>
+                  <TableHead className="w-12 h-7 py-1 px-2"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -934,6 +937,16 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
         onSuccess={loadData}
       />
 
+      {!isRainbow && (
+        <AddCardDialog
+          open={addCardOpen}
+          onOpenChange={setAddCardOpen}
+          setId={set.id}
+          isMultiYear={isMultiYear}
+          onSuccess={loadData}
+        />
+      )}
+
       {isRainbow && items.length > 0 && (
         <AddParallelDialog
           open={addParallelOpen}
@@ -983,6 +996,21 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Custom CSS for ultra-dense compact table */}
+      <style>{`
+        .compact-checklist-table {
+          font-size: 13px;
+          line-height: 1.2;
+        }
+        .compact-checklist-table tbody tr {
+          height: 28px;
+        }
+        .compact-checklist-table th,
+        .compact-checklist-table td {
+          padding: 4px 8px;
+        }
+      `}</style>
     </div>
   );
 }

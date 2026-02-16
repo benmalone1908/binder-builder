@@ -77,16 +77,7 @@ export function ChecklistItemRow({
   async function setStatus(newStatus: "need" | "pending" | "owned") {
     if (item.status === newStatus) return;
 
-    console.log('setStatus called:', {
-      newStatus,
-      hasPrintRun: !!item.parallel_print_run,
-      printRun: item.parallel_print_run,
-      hasCallback: !!onSerialNumberCapture,
-    });
-
-    // If marking as owned and card has a print run, prompt for serial number
     if (newStatus === "owned" && item.parallel_print_run && onSerialNumberCapture) {
-      console.log('Opening serial number dialog');
       onSerialNumberCapture(item.id, item.parallel, item.parallel_print_run);
       return;
     }
@@ -102,59 +93,48 @@ export function ChecklistItemRow({
     }
 
     onStatusChange(item.id, newStatus);
+    toast.success(`Card ${newStatus}`);
+  }
+
+  function cycleStatus() {
+    const statusOrder: Array<"need" | "pending" | "owned"> = ["need", "pending", "owned"];
+    const currentIndex = statusOrder.indexOf(item.status);
+    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+    setStatus(nextStatus);
   }
 
   function startEditing(field: EditingField) {
     if (!field) return;
-    const currentValue = field === "team" ? (item[field] || "") : item[field];
-    setEditValue(currentValue);
     setEditingField(field);
+    setEditValue(String(item[field] || ""));
   }
 
-  async function saveEdit() {
+  async function commitEdit() {
     if (!editingField) return;
 
-    const originalValue = editingField === "team" ? (item[editingField] || "") : item[editingField];
-
-    // Don't save if unchanged
-    if (editValue === originalValue) {
+    const trimmed = editValue.trim();
+    if (trimmed === (item[editingField] || "")) {
       setEditingField(null);
       return;
     }
-
-    // Validate required fields
-    if ((editingField === "card_number" || editingField === "player_name") && !editValue.trim()) {
-      toast.error(`${editingField === "card_number" ? "Card #" : "Player name"} cannot be empty`);
-      setEditValue(originalValue);
-      setEditingField(null);
-      return;
-    }
-
-    const updateData: Record<string, string | null> = {
-      [editingField]: editingField === "team" ? (editValue.trim() || null) : editValue.trim(),
-    };
 
     const { error } = await supabase
       .from("checklist_items")
-      .update(updateData)
+      .update({ [editingField]: trimmed || null })
       .eq("id", item.id);
 
     if (error) {
-      toast.error("Failed to update");
-      setEditingField(null);
+      toast.error("Failed to save");
       return;
     }
 
-    onFieldChange(item.id, editingField, editValue.trim());
+    onFieldChange(item.id, editingField, trimmed);
     setEditingField(null);
+    toast.success("Updated");
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      saveEdit();
-    } else if (e.key === "Escape") {
-      setEditingField(null);
-    }
+  function cancelEdit() {
+    setEditingField(null);
   }
 
   function openImageSearch() {
@@ -164,148 +144,240 @@ export function ChecklistItemRow({
     window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank");
   }
 
-  function renderEditableCell(field: "card_number" | "player_name" | "team", className?: string) {
-    const value = field === "team" ? (item[field] || "—") : item[field];
-
-    if (editingField === field) {
-      return (
-        <Input
-          ref={inputRef}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={saveEdit}
-          onKeyDown={handleKeyDown}
-          className="h-7 text-sm"
-        />
-      );
-    }
-
-    return (
-      <span
-        className={cn("cursor-pointer hover:bg-accent/50 px-1 -mx-1 rounded", className)}
-        onClick={() => startEditing(field)}
-      >
-        {value}
-      </span>
-    );
-  }
+  const allStatuses = [
+    {
+      status: "need" as const,
+      Icon: Ban,
+      title: "Mark as Need",
+      activeClass: "text-muted-foreground bg-muted/50",
+      inactiveClass: "text-muted-foreground/20 hover:text-muted-foreground/60",
+    },
+    {
+      status: "pending" as const,
+      Icon: Timer,
+      title: "Mark as Pending",
+      activeClass: "text-amber-600 bg-amber-50",
+      inactiveClass: "text-amber-600/20 hover:text-amber-600/60",
+    },
+    {
+      status: "owned" as const,
+      Icon: CheckCircle2,
+      title: "Mark as Owned",
+      activeClass: "text-[#F97316] bg-[#F97316]/10",
+      inactiveClass: "text-[#F97316]/20 hover:text-[#F97316]/60",
+    },
+  ];
 
   return (
     <TableRow
       ref={setNodeRef}
       style={style}
       className={cn(
-        selected ? "bg-accent/50" : "",
+        "group hover:bg-muted/40 transition-colors border-b border-border/40",
+        selected && "bg-accent/30",
         isDragging && "opacity-50"
       )}
     >
-      {isDraggable && (
-        <TableCell className="w-8 py-1.5 cursor-grab active:cursor-grabbing">
-          <div {...attributes} {...listeners}>
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
+      {/* Drag handle for rainbow sets */}
+      {isRainbow && isDraggable && (
+        <TableCell className="w-6 py-1 px-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </TableCell>
       )}
-      <TableCell className="w-10 py-1.5">
+
+      {/* Checkbox */}
+      <TableCell className="py-1 px-2">
         <Checkbox
           checked={selected}
-          onClick={(e) => onSelectChange(item.id, !selected, e.shiftKey)}
+          onCheckedChange={(checked) => {
+            const event = window.event as MouseEvent;
+            onSelectChange(item.id, !!checked, event?.shiftKey || false);
+          }}
+          className="h-3.5 w-3.5"
         />
       </TableCell>
+
+      {/* Card Number (non-rainbow) */}
       {!isRainbow && (
-        <TableCell className="w-16 whitespace-nowrap py-1.5">
-          {renderEditableCell("card_number")}
+        <TableCell className="py-1 px-2">
+          {editingField === "card_number" ? (
+            <Input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") cancelEdit();
+              }}
+              className="h-6 px-1.5 text-xs"
+            />
+          ) : (
+            <button
+              onClick={() => startEditing("card_number")}
+              className="text-xs text-muted-foreground font-medium hover:text-foreground transition-colors"
+            >
+              {item.card_number}
+            </button>
+          )}
         </TableCell>
       )}
+
+      {/* Player Name (non-rainbow) */}
       {!isRainbow && (
-        <>
-          <TableCell className="font-medium py-1.5 truncate max-w-0">
-            {renderEditableCell("player_name")}
-          </TableCell>
-          <TableCell className="text-muted-foreground py-1.5 whitespace-nowrap">
-            {renderEditableCell("team")}
-          </TableCell>
-        </>
+        <TableCell className="py-1 px-2">
+          {editingField === "player_name" ? (
+            <Input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") cancelEdit();
+              }}
+              className="h-6 px-1.5 text-xs"
+            />
+          ) : (
+            <button
+              onClick={() => startEditing("player_name")}
+              title={item.player_name}
+              className="text-[13px] font-medium text-[#0F2A44] hover:text-[#1F4E79] transition-colors truncate w-full text-left"
+            >
+              {item.player_name}
+            </button>
+          )}
+        </TableCell>
       )}
+
+      {/* Team (non-rainbow) */}
+      {!isRainbow && (
+        <TableCell className="py-1 px-2">
+          {editingField === "team" ? (
+            <Input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") cancelEdit();
+              }}
+              className="h-6 px-1.5 text-xs"
+            />
+          ) : (
+            <button
+              onClick={() => startEditing("team")}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate w-full text-left"
+            >
+              {item.team || "—"}
+            </button>
+          )}
+        </TableCell>
+      )}
+
+      {/* Parallel (rainbow only) */}
       {isRainbow && (
-        <TableCell className="font-medium py-1.5">
-          {item.parallel || "—"}
+        <TableCell className="py-1 px-2">
+          <button
+            onClick={() => onEdit(item)}
+            title={`${item.parallel || "Base"}${item.parallel_print_run ? ` /${item.parallel_print_run}` : ""}`}
+            className="text-[13px] font-medium text-[#0F2A44] hover:text-[#1F4E79] transition-colors truncate w-full text-left"
+          >
+            {item.parallel || "Base"}
+            {item.parallel_print_run && (
+              <span className="text-muted-foreground ml-1">
+                /{item.parallel_print_run}
+              </span>
+            )}
+          </button>
         </TableCell>
       )}
+
+      {/* Year (multi-year only when not in year filter mode) */}
       {isMultiYear && (
-        <TableCell className="text-muted-foreground py-1.5 whitespace-nowrap">
-          {item.year || "—"}
+        <TableCell className="py-1 px-2">
+          <span className="text-xs text-muted-foreground">{item.year || "—"}</span>
         </TableCell>
       )}
+
+      {/* Serial Number (rainbow only) */}
       {isRainbow && (
-        <TableCell className="text-muted-foreground py-1.5 text-sm whitespace-nowrap">
-          {item.serial_owned && item.parallel_print_run
-            ? `${item.serial_owned}/${item.parallel_print_run}`
-            : item.serial_owned
-            ? item.serial_owned
-            : item.parallel_print_run
-            ? `—/${item.parallel_print_run}`
-            : "—"}
+        <TableCell className="py-1 px-2 text-right" style={{ paddingRight: '256px' }}>
+          {item.parallel_print_run ? (
+            <button
+              onClick={() => onSerialNumberCapture?.(item.id, item.parallel, item.parallel_print_run)}
+              className={cn(
+                "text-xs font-mono font-medium transition-colors",
+                item.serial_owned
+                  ? "text-[#F97316] hover:text-[#EA580C]"
+                  : "text-muted-foreground/40 hover:text-muted-foreground"
+              )}
+              title="Click to capture/update serial number"
+            >
+              {item.serial_owned || "—"}/{item.parallel_print_run}
+            </button>
+          ) : item.serial_owned ? (
+            <button
+              onClick={() => onSerialNumberCapture?.(item.id, item.parallel, item.parallel_print_run)}
+              className="text-xs font-mono text-[#F97316] font-medium hover:text-[#EA580C] transition-colors"
+              title="Click to update serial number"
+            >
+              {item.serial_owned}
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground/40">—</span>
+          )}
         </TableCell>
       )}
-      <TableCell className="py-1.5">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-7 w-7",
-              item.status === "owned"
-                ? "text-green-600 bg-green-100 hover:bg-green-200"
-                : "text-muted-foreground hover:text-green-600"
-            )}
-            onClick={() => setStatus("owned")}
-            title="Have"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-7 w-7",
-              item.status === "pending"
-                ? "text-yellow-600 bg-yellow-100 hover:bg-yellow-200"
-                : "text-muted-foreground hover:text-yellow-600"
-            )}
-            onClick={() => setStatus("pending")}
-            title="Pending"
-          >
-            <Timer className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-7 w-7",
-              item.status === "need"
-                ? "text-red-600 bg-red-100 hover:bg-red-200"
-                : "text-muted-foreground hover:text-red-600"
-            )}
-            onClick={() => setStatus("need")}
-            title="Need"
-          >
-            <Ban className="h-4 w-4" />
-          </Button>
+
+      {/* Status Icons - All Three */}
+      <TableCell className={cn("py-1", isRainbow ? "px-4" : "px-1")}>
+        <div className="flex items-center gap-0.5">
+          {allStatuses.map(({ status, Icon, title, activeClass, inactiveClass }) => {
+            const isActive = item.status === status;
+            return (
+              <button
+                key={status}
+                onClick={() => setStatus(status)}
+                title={title}
+                className={cn(
+                  "inline-flex items-center justify-center w-6 h-6 rounded transition-all",
+                  isActive ? activeClass : inactiveClass,
+                  "hover:scale-110"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </button>
+            );
+          })}
         </div>
       </TableCell>
-      <TableCell className="py-1.5">
-        <div className="flex gap-1">
+
+      {/* Actions */}
+      <TableCell className="py-1 px-2 text-right">
+        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"
-            size="icon"
-            className="h-7 w-7"
+            size="sm"
             onClick={openImageSearch}
             title="Search for card image"
+            className="h-6 w-6 p-0"
           >
             <Image className="h-3 w-3" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(item)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(item)}
+            className="h-6 w-6 p-0"
+          >
             <Pencil className="h-3 w-3" />
           </Button>
         </div>
