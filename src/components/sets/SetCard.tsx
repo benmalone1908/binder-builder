@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type SetRow = Tables<"sets">;
+type SetRow = Tables<"library_sets">;
 
 const SET_TYPE_COLORS: Record<string, { bg: string; text: string; border: string; accent: string }> = {
   base: { bg: "bg-slate-50", text: "text-slate-800", border: "border-slate-300", accent: "bg-slate-100" },

@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-type SetRow = Tables<"sets">;
-type ChecklistItem = Tables<"checklist_items">;
+type SetRow = Tables<"library_sets">;
+type ChecklistItem = Tables<"library_checklist_items">;
 
 interface SearchResult extends ChecklistItem {
   set: SetRow;

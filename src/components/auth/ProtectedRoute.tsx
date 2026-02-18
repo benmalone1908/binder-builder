@@ -8,9 +8,10 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
-  const { user, isAdmin, hasAccess, loading } = useAuth();
+  const { user, profile, isAdmin, hasAccess, loading } = useAuth();
 
-  if (loading) {
+  // Wait for both auth and profile to resolve before making access decisions
+  if (loading || (user && !profile)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>

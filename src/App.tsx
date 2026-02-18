@@ -7,6 +7,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import SetsIndex from "./pages/SetsIndex";
 import SetDetail from "./pages/SetDetail";
 import CardSearch from "./pages/CardSearch";
+import BrowseLibrary from "./pages/BrowseLibrary";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -43,6 +44,16 @@ const App = () => (
               <ProtectedRoute>
                 <DashboardLayout>
                   <SetDetail />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <BrowseLibrary />
                 </DashboardLayout>
               </ProtectedRoute>
             }

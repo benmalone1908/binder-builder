@@ -1,6 +1,6 @@
 import type { Tables } from "@/integrations/supabase/types";
 
-type ChecklistItem = Tables<"checklist_items">;
+type ChecklistItem = Tables<"library_checklist_items">;
 
 export function exportChecklistToCSV(
   setName: string,

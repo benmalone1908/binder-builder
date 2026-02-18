@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CoverImageInput } from "@/components/shared/CoverImageInput";
 
-type SetRow = Tables<"sets">;
+type SetRow = Tables<"library_sets">;
 
 interface CoverImageDialogProps {
   open: boolean;

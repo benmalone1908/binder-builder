@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type ChecklistItem = Tables<"checklist_items">;
+type ChecklistItem = Tables<"library_checklist_items">;
 
 interface EditChecklistItemDialogProps {
   open: boolean;

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Image, Pencil, CheckCircle2, Ban, Timer, GripVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type ChecklistItem = Tables<"checklist_items">;
+type ChecklistItem = Tables<"library_checklist_items">;
 
 interface SetInfo {
   year: number;
@@ -74,8 +75,10 @@ export function ChecklistItemRow({
     }
   }, [editingField]);
 
+  const { user } = useAuth();
+
   async function setStatus(newStatus: "need" | "pending" | "owned") {
-    if (item.status === newStatus) return;
+    if (item.status === newStatus || !user) return;
 
     if (newStatus === "owned" && item.parallel_print_run && onSerialNumberCapture) {
       onSerialNumberCapture(item.id, item.parallel, item.parallel_print_run);
@@ -83,9 +86,15 @@ export function ChecklistItemRow({
     }
 
     const { error } = await supabase
-      .from("library_checklist_items")
-      .update({ status: newStatus })
-      .eq("id", item.id);
+      .from("user_card_status")
+      .upsert(
+        {
+          user_id: user.id,
+          library_checklist_item_id: item.id,
+          status: newStatus,
+        },
+        { onConflict: "user_id,library_checklist_item_id" }
+      );
 
     if (error) {
       toast.error("Failed to update status");

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, Fragment, useCallback } from "rea
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Pencil, Upload, ImageOff, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -48,8 +49,8 @@ import { ChecklistItemRow } from "@/components/checklist/ChecklistItemRow";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-type SetRow = Tables<"sets">;
-type ChecklistItem = Tables<"checklist_items">;
+type SetRow = Tables<"library_sets">;
+type ChecklistItem = Tables<"library_checklist_items">;
 
 const SET_TYPE_LABELS: Record<string, string> = {
   base: "Base",
@@ -80,6 +81,7 @@ interface SetDetailContentProps {
 
 export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetailContentProps) {
   const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
 
   const [set, setSet] = useState<SetRow | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
@@ -122,6 +124,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     if (!setId) return;
     setLoading(true);
 
+    const queries: [
+      ReturnType<typeof supabase.from<"library_sets">>,
+      ReturnType<typeof supabase.from<"library_checklist_items">>,
+    ] = [
+      supabase.from("library_sets").select("*").eq("id", setId).single() as any,
+      supabase.from("library_checklist_items").select("*").eq("library_set_id", setId) as any,
+    ];
+
     const [setResult, itemsResult] = await Promise.all([
       supabase.from("library_sets").select("*").eq("id", setId).single(),
       supabase.from("library_checklist_items").select("*").eq("library_set_id", setId),
@@ -136,11 +146,49 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
       return;
     }
 
+    let mergedItems = itemsResult.data || [];
+
+    // Load user's card statuses and merge them into items
+    if (user) {
+      const itemIds = mergedItems.map((i) => i.id);
+      if (itemIds.length > 0) {
+        const { data: userStatuses } = await supabase
+          .from("user_card_status")
+          .select("library_checklist_item_id, status, serial_owned")
+          .eq("user_id", user.id)
+          .in("library_checklist_item_id", itemIds);
+
+        if (userStatuses && userStatuses.length > 0) {
+          const statusMap = new Map(
+            userStatuses.map((s) => [s.library_checklist_item_id, s])
+          );
+          mergedItems = mergedItems.map((item) => {
+            const userStatus = statusMap.get(item.id);
+            if (userStatus) {
+              return {
+                ...item,
+                status: userStatus.status,
+                serial_owned: userStatus.serial_owned ?? item.serial_owned,
+              };
+            }
+            // Default status for cards without user_card_status entry
+            return { ...item, status: "need" as const };
+          });
+        } else {
+          // No user statuses at all - all cards are 'need'
+          mergedItems = mergedItems.map((item) => ({
+            ...item,
+            status: "need" as const,
+          }));
+        }
+      }
+    }
+
     setSet(setResult.data);
-    setItems(itemsResult.data || []);
+    setItems(mergedItems);
     setSelectedIds(new Set());
     setLoading(false);
-  }, [setId, isCompact, onClose, navigate]);
+  }, [setId, isCompact, onClose, navigate, user]);
 
   useEffect(() => {
     loadData();
@@ -408,12 +456,18 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
 
   async function handleBulkStatusChange(newStatus: "need" | "pending" | "owned") {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    if (ids.length === 0 || !user) return;
+
+    // Upsert user_card_status for each selected card
+    const upsertData = ids.map((id) => ({
+      user_id: user.id,
+      library_checklist_item_id: id,
+      status: newStatus,
+    }));
 
     const { error } = await supabase
-      .from("library_checklist_items")
-      .update({ status: newStatus })
-      .in("id", ids);
+      .from("user_card_status")
+      .upsert(upsertData, { onConflict: "user_id,library_checklist_item_id" });
 
     if (error) {
       toast.error("Failed to update: " + error.message);

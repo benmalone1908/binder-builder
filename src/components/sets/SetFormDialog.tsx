@@ -33,7 +33,7 @@ import { ComboboxWithCreate } from "@/components/shared/ComboboxWithCreate";
 import { CoverImageInput } from "@/components/shared/CoverImageInput";
 import { CollectionMultiSelect } from "@/components/shared/CollectionMultiSelect";
 
-type SetRow = Tables<"sets">;
+type SetRow = Tables<"library_sets">;
 
 const SET_TYPE_LABELS: Record<string, string> = {
   base: "Base",

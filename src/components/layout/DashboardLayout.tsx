@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
-import { NavLink } from "react-router-dom";
-import { Library, Menu, Search, Settings } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Library, Menu, Search, Settings, BookOpen, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { isAdmin, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    navigate("/login");
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -32,7 +40,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
         <nav className="flex-1 space-y-1 p-2">
           <NavLink
+            to="/library"
+            title="Browse Library"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
+                sidebarOpen ? "gap-3 px-3" : "justify-center px-2",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )
+            }
+          >
+            <BookOpen className="h-4 w-4 shrink-0" />
+            {sidebarOpen && "Browse Library"}
+          </NavLink>
+          <NavLink
             to="/"
+            end
             title="My Sets"
             className={({ isActive }) =>
               cn(
@@ -63,23 +88,45 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Search className="h-4 w-4 shrink-0" />
             {sidebarOpen && "Card Search"}
           </NavLink>
-          <NavLink
-            to="/admin"
-            title="Admin"
-            className={({ isActive }) =>
-              cn(
-                "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
-                sidebarOpen ? "gap-3 px-3" : "justify-center px-2",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )
-            }
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            {sidebarOpen && "Admin"}
-          </NavLink>
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              title="Admin"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
+                  sidebarOpen ? "gap-3 px-3" : "justify-center px-2",
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )
+              }
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              {sidebarOpen && "Admin"}
+            </NavLink>
+          )}
         </nav>
+
+        {/* User info & logout at bottom */}
+        <div className="border-t p-2">
+          {sidebarOpen && profile && (
+            <p className="text-xs text-muted-foreground px-3 py-1 truncate">
+              {profile.email}
+            </p>
+          )}
+          <button
+            onClick={handleSignOut}
+            title="Sign Out"
+            className={cn(
+              "flex items-center rounded-md py-2 text-sm font-medium transition-colors w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              sidebarOpen ? "gap-3 px-3" : "justify-center px-2"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {sidebarOpen && "Sign Out"}
+          </button>
+        </div>
       </aside>
 
       {/* Main content */}

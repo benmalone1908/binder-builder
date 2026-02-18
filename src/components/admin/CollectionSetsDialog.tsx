@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 
-type SetRow = Tables<"sets">;
+type SetRow = Tables<"library_sets">;
 
 interface Collection {
   id: string;

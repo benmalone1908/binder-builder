@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type SetRow = Tables<"sets">;
+type SetRow = Tables<"library_sets">;
 
 interface DeleteSetDialogProps {
   open: boolean;

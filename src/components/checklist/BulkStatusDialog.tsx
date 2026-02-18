@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import {
@@ -27,7 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type ChecklistItem = Tables<"checklist_items">;
+type ChecklistItem = Tables<"library_checklist_items">;
 type CardStatus = "need" | "pending" | "owned";
 
 interface MatchResult {
@@ -48,6 +49,7 @@ export function BulkStatusDialog({
   items,
   onSuccess,
 }: BulkStatusDialogProps) {
+  const { user } = useAuth();
   const [rawText, setRawText] = useState("");
   const [targetStatus, setTargetStatus] = useState<CardStatus>("owned");
   const [matches, setMatches] = useState<MatchResult[] | null>(null);
@@ -78,7 +80,7 @@ export function BulkStatusDialog({
   }
 
   async function handleApply() {
-    if (!matches) return;
+    if (!matches || !user) return;
 
     const toUpdate = matches
       .filter((m) => m.matched && m.matched.status !== targetStatus)
@@ -91,10 +93,15 @@ export function BulkStatusDialog({
 
     setUpdating(true);
 
+    const upsertData = toUpdate.map((id) => ({
+      user_id: user.id,
+      library_checklist_item_id: id,
+      status: targetStatus,
+    }));
+
     const { error } = await supabase
-      .from("library_checklist_items")
-      .update({ status: targetStatus })
-      .in("id", toUpdate);
+      .from("user_card_status")
+      .upsert(upsertData, { onConflict: "user_id,library_checklist_item_id" });
 
     if (error) {
       toast.error("Failed to update: " + error.message);

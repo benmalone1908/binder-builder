@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette } from "lucide-react";
+import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +29,8 @@ import { CoverImageDialog } from "@/components/sets/CoverImageDialog";
 import { SetDetailSheet } from "@/components/sets/SetDetailSheet";
 import { GlobalSearchModal } from "@/components/sets/GlobalSearchModal";
 
-type SetRow = Tables<"sets">;
-type CollectionRow = Tables<"collections">;
+type SetRow = Tables<"library_sets">;
+type CollectionRow = Tables<"user_collections">;
 type ViewMode = "grid" | "list";
 type GroupBy = "year" | "collection";
 type SetTab = "regular" | "multi_year" | "rainbow";
@@ -61,6 +62,7 @@ const SET_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function SetsIndex() {
+  const { user, isAdmin } = useAuth();
   const [sets, setSets] = useState<SetRow[]>([]);
   const [statsMap, setStatsMap] = useState<Map<string, SetStats>>(new Map());
   const [collections, setCollections] = useState<CollectionRow[]>([]);
@@ -83,51 +85,77 @@ export default function SetsIndex() {
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
 
   async function loadSetStats(setId: string) {
-    // Fetch stats for a single set
+    if (!user) return;
+
+    // Get total cards for this set
     const { data: items } = await supabase
       .from("library_checklist_items")
-      .select("status")
+      .select("id")
       .eq("library_set_id", setId);
 
-    const stats: SetStats = { total: 0, owned: 0, pending: 0 };
+    const total = items?.length || 0;
 
-    if (items) {
-      for (const item of items) {
-        stats.total++;
-        if (item.status === "owned") stats.owned++;
-        if (item.status === "pending") stats.pending++;
+    // Get user's statuses for cards in this set
+    const { data: userStatuses } = await supabase
+      .from("user_card_status")
+      .select("status, library_checklist_items!inner(library_set_id)")
+      .eq("user_id", user.id)
+      .eq("library_checklist_items.library_set_id", setId);
+
+    let owned = 0;
+    let pending = 0;
+    if (userStatuses) {
+      for (const row of userStatuses) {
+        if (row.status === "owned") owned++;
+        if (row.status === "pending") pending++;
       }
     }
 
-    // Update just this set's stats in the map
     setStatsMap((prev) => {
       const next = new Map(prev);
-      next.set(setId, stats);
+      next.set(setId, { total, owned, pending });
       return next;
     });
   }
 
   async function loadData() {
+    if (!user) return;
     setLoading(true);
 
     try {
-      // Fetch sets, collections, and set_collections in parallel
-      const [setsResult, collectionsResult, setCollectionsResult] = await Promise.all([
-        supabase.from("library_sets").select("*").order("updated_at", { ascending: false }),
+      // Fetch user's sets (via user_sets join), collections, and collection-set joins
+      const [userSetsResult, collectionsResult, setCollectionsResult] = await Promise.all([
+        supabase
+          .from("user_sets")
+          .select("library_set_id, library_sets!inner(*)")
+          .eq("user_id", user.id),
         supabase.from("user_collections").select("*").order("name"),
         supabase.from("user_collection_sets").select("library_set_id, user_collection_id"),
       ]);
 
-      if (setsResult.error) console.error("Sets query error:", setsResult.error);
+      if (userSetsResult.error) console.error("User sets query error:", userSetsResult.error);
       if (collectionsResult.error) console.error("Collections query error:", collectionsResult.error);
       if (setCollectionsResult.error) console.error("Collection sets query error:", setCollectionsResult.error);
 
-      if (setsResult.data) setSets(setsResult.data);
+      const userSets = (userSetsResult.data || []).map(
+        (r) => r.library_sets as unknown as SetRow
+      );
+      setSets(userSets);
       if (collectionsResult.data) setCollections(collectionsResult.data);
       if (setCollectionsResult.data) setSetCollectionJoins(setCollectionsResult.data);
 
-      // Fetch all checklist items using pagination (Supabase has a default 1000 row limit)
-      const allItems: { library_set_id: string; status: string }[] = [];
+      // Get set IDs for filtering
+      const setIds = userSets.map((s) => s.id);
+
+      if (setIds.length === 0) {
+        setStatsMap(new Map());
+        setLoading(false);
+        return;
+      }
+
+      // Fetch total card counts per set and build item→set lookup (paginated)
+      const totalCounts = new Map<string, number>();
+      const itemToSet = new Map<string, string>();
       const pageSize = 1000;
       let offset = 0;
       let hasMore = true;
@@ -135,26 +163,62 @@ export default function SetsIndex() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("library_checklist_items")
-          .select("library_set_id, status")
+          .select("id, library_set_id")
+          .in("library_set_id", setIds)
           .range(offset, offset + pageSize - 1);
 
         if (error || !data) {
           if (error) console.error("Checklist items query error:", error);
           hasMore = false;
         } else {
-          allItems.push(...data);
+          for (const item of data) {
+            totalCounts.set(item.library_set_id, (totalCounts.get(item.library_set_id) || 0) + 1);
+            itemToSet.set(item.id, item.library_set_id);
+          }
           hasMore = data.length === pageSize;
           offset += pageSize;
         }
       }
 
+      // Fetch user's card statuses (paginated, no join needed)
+      const ownedCounts = new Map<string, number>();
+      const pendingCounts = new Map<string, number>();
+      offset = 0;
+      hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("user_card_status")
+          .select("status, library_checklist_item_id")
+          .eq("user_id", user.id)
+          .range(offset, offset + pageSize - 1);
+
+        if (error || !data) {
+          if (error) console.error("User card status error:", error);
+          hasMore = false;
+        } else {
+          for (const row of data) {
+            const setId = itemToSet.get(row.library_checklist_item_id);
+            if (!setId) continue;
+            if (row.status === "owned") {
+              ownedCounts.set(setId, (ownedCounts.get(setId) || 0) + 1);
+            } else if (row.status === "pending") {
+              pendingCounts.set(setId, (pendingCounts.get(setId) || 0) + 1);
+            }
+          }
+          hasMore = data.length === pageSize;
+          offset += pageSize;
+        }
+      }
+
+      // Build combined stats map
       const map = new Map<string, SetStats>();
-      for (const item of allItems) {
-        const current = map.get(item.library_set_id) || { total: 0, owned: 0, pending: 0 };
-        current.total++;
-        if (item.status === "owned") current.owned++;
-        if (item.status === "pending") current.pending++;
-        map.set(item.library_set_id, current);
+      for (const setId of setIds) {
+        map.set(setId, {
+          total: totalCounts.get(setId) || 0,
+          owned: ownedCounts.get(setId) || 0,
+          pending: pendingCounts.get(setId) || 0,
+        });
       }
       setStatsMap(map);
     } catch (err) {
@@ -166,7 +230,7 @@ export default function SetsIndex() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user]);
 
   const filteredSets = useMemo(() => {
     let result = sets;
@@ -280,15 +344,6 @@ export default function SetsIndex() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Sets</h1>
-        <Button
-          onClick={() => {
-            setEditingSet(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Set
-        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>
@@ -367,17 +422,11 @@ export default function SetsIndex() {
           ) : filteredSets.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No sets match your search." : "No regular sets yet. Create your first set to get started."}
+                {searchTerm ? "No sets match your search." : "No sets in your collection yet."}
               </p>
               {!searchTerm && (
-                <Button
-                  onClick={() => {
-                    setEditingSet(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create First Set
+                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                  Browse Library
                 </Button>
               )}
             </div>
@@ -608,17 +657,11 @@ export default function SetsIndex() {
           ) : filteredSets.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No multi-year sets match your search." : "No multi-year insert sets yet."}
+                {searchTerm ? "No multi-year sets match your search." : "No multi-year sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button
-                  onClick={() => {
-                    setEditingSet(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Multi-Year Set
+                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                  Browse Library
                 </Button>
               )}
             </div>
@@ -733,17 +776,11 @@ export default function SetsIndex() {
           ) : filteredSets.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No rainbow sets match your search." : "No rainbow chases yet."}
+                {searchTerm ? "No rainbow sets match your search." : "No rainbow sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button
-                  onClick={() => {
-                    setEditingSet(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Rainbow Set
+                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                  Browse Library
                 </Button>
               )}
             </div>

@@ -14,8 +14,8 @@ import { Search, ExternalLink, CheckCircle2, Timer, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type ChecklistItem = Tables<"checklist_items">;
-type SetRow = Tables<"sets">;
+type ChecklistItem = Tables<"library_checklist_items">;
+type SetRow = Tables<"library_sets">;
 
 interface SearchResult extends ChecklistItem {
   set: SetRow;

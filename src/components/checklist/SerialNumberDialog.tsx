@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -28,6 +29,7 @@ export function SerialNumberDialog({
   printRun,
   onSuccess,
 }: SerialNumberDialogProps) {
+  const { user } = useAuth();
   const [serialNumber, setSerialNumber] = useState("");
 
   useEffect(() => {
@@ -38,14 +40,19 @@ export function SerialNumberDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
 
     const { error } = await supabase
-      .from("library_checklist_items")
-      .update({
-        status: "owned",
-        serial_owned: serialNumber.trim() || null,
-      })
-      .eq("id", itemId);
+      .from("user_card_status")
+      .upsert(
+        {
+          user_id: user.id,
+          library_checklist_item_id: itemId,
+          status: "owned",
+          serial_owned: serialNumber.trim() || null,
+        },
+        { onConflict: "user_id,library_checklist_item_id" }
+      );
 
     if (error) {
       toast.error("Failed to update: " + error.message);
@@ -58,11 +65,18 @@ export function SerialNumberDialog({
   }
 
   function handleSkip() {
+    if (!user) return;
     // Mark as owned without serial number
     supabase
-      .from("library_checklist_items")
-      .update({ status: "owned" })
-      .eq("id", itemId)
+      .from("user_card_status")
+      .upsert(
+        {
+          user_id: user.id,
+          library_checklist_item_id: itemId,
+          status: "owned",
+        },
+        { onConflict: "user_id,library_checklist_item_id" }
+      )
       .then(({ error }) => {
         if (error) {
           toast.error("Failed to update: " + error.message);
