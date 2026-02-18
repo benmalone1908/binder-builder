@@ -58,9 +58,9 @@ export function AddParallelDialog({
 
   async function onSubmit(data: FormData) {
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .insert({
-        set_id: setId,
+        library_set_id: setId,
         card_number: cardNumber,
         player_name: playerName,
         team: team,

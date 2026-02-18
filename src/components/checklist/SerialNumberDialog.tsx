@@ -40,7 +40,7 @@ export function SerialNumberDialog({
     e.preventDefault();
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({
         status: "owned",
         serial_owned: serialNumber.trim() || null,
@@ -60,7 +60,7 @@ export function SerialNumberDialog({
   function handleSkip() {
     // Mark as owned without serial number
     supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: "owned" })
       .eq("id", itemId)
       .then(({ error }) => {

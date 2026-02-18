@@ -53,7 +53,7 @@ export function CollectionMultiSelect({
 
   async function loadCollections() {
     const { data, error } = await supabase
-      .from("collections")
+      .from("user_collections")
       .select("id, name")
       .order("name");
 
@@ -91,7 +91,7 @@ export function CollectionMultiSelect({
     setCreating(true);
 
     const { data, error } = await supabase
-      .from("collections")
+      .from("user_collections")
       .insert({ name: newName.trim() })
       .select()
       .single();

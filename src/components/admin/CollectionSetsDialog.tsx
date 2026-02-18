@@ -63,11 +63,11 @@ export function CollectionSetsDialog({
     setLoading(true);
 
     const [setsResult, assignmentsResult] = await Promise.all([
-      supabase.from("sets").select("*").order("year", { ascending: false }),
+      supabase.from("library_sets").select("*").order("year", { ascending: false }),
       supabase
-        .from("set_collections")
-        .select("set_id")
-        .eq("collection_id", collection.id),
+        .from("user_collection_sets")
+        .select("library_set_id")
+        .eq("user_collection_id", collection.id),
     ]);
 
     if (setsResult.data) {
@@ -75,7 +75,7 @@ export function CollectionSetsDialog({
     }
 
     if (assignmentsResult.data) {
-      setSelectedSetIds(new Set(assignmentsResult.data.map((a) => a.set_id)));
+      setSelectedSetIds(new Set(assignmentsResult.data.map((a) => a.library_set_id)));
     }
 
     setLoading(false);
@@ -99,17 +99,17 @@ export function CollectionSetsDialog({
 
     // Delete all existing assignments for this collection
     await supabase
-      .from("set_collections")
+      .from("user_collection_sets")
       .delete()
-      .eq("collection_id", collection.id);
+      .eq("user_collection_id", collection.id);
 
     // Insert new assignments
     if (selectedSetIds.size > 0) {
       const assignments = Array.from(selectedSetIds).map((setId) => ({
-        set_id: setId,
-        collection_id: collection.id,
+        library_set_id: setId,
+        user_collection_id: collection.id,
       }));
-      const { error } = await supabase.from("set_collections").insert(assignments);
+      const { error } = await supabase.from("user_collection_sets").insert(assignments);
 
       if (error) {
         toast.error("Failed to save: " + error.message);

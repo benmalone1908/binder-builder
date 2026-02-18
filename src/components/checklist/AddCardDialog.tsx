@@ -55,9 +55,9 @@ export function AddCardDialog({
 
   async function onSubmit(data: FormData) {
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .insert({
-        set_id: setId,
+        library_set_id: setId,
         card_number: data.card_number.trim(),
         player_name: data.player_name.trim(),
         team: data.team.trim() || null,

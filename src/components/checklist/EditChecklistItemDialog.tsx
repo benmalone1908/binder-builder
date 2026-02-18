@@ -73,7 +73,7 @@ export function EditChecklistItemDialog({
     if (!item) return;
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({
         card_number: data.card_number,
         player_name: data.player_name,

@@ -66,11 +66,11 @@ export function GlobalSearchModal({
     let setIdsInCollection: string[] | null = null;
     if (collectionId) {
       const { data: setCollections } = await supabase
-        .from("set_collections")
-        .select("set_id")
-        .eq("collection_id", collectionId);
+        .from("user_collection_sets")
+        .select("library_set_id")
+        .eq("user_collection_id", collectionId);
 
-      setIdsInCollection = setCollections?.map(sc => sc.set_id) || [];
+      setIdsInCollection = setCollections?.map(sc => sc.library_set_id) || [];
 
       // If no sets in collection, return empty results
       if (setIdsInCollection.length === 0) {
@@ -82,13 +82,13 @@ export function GlobalSearchModal({
 
     // Query checklist items matching search term
     let query = supabase
-      .from("checklist_items")
-      .select("*, sets(*)")
+      .from("library_checklist_items")
+      .select("*, library_sets(*)")
       .or(`card_number.ilike.%${term}%,player_name.ilike.%${term}%,team.ilike.%${term}%,parallel.ilike.%${term}%`);
 
     // Filter by collection sets if collectionId provided
     if (setIdsInCollection) {
-      query = query.in("set_id", setIdsInCollection);
+      query = query.in("library_set_id", setIdsInCollection);
     }
 
     const { data: items, error } = await query;
@@ -103,10 +103,10 @@ export function GlobalSearchModal({
     const grouped = new Map<string, GroupedResults>();
 
     items?.forEach((item: any) => {
-      const setId = item.set_id;
+      const setId = item.library_set_id;
       if (!grouped.has(setId)) {
         grouped.set(setId, {
-          set: item.sets,
+          set: item.library_sets,
           cards: [],
         });
       }
@@ -127,7 +127,7 @@ export function GlobalSearchModal({
     newStatus: "need" | "pending" | "owned"
   ) {
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: newStatus })
       .eq("id", cardId);
 

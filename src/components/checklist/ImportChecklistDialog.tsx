@@ -87,9 +87,9 @@ export function ImportChecklistDialog({
 
     // Fetch existing parallels to avoid duplicates
     const { data: existingCards, error: fetchError } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .select("parallel")
-      .eq("set_id", setId)
+      .eq("library_set_id", setId)
       .eq("card_number", rainbowCardNumber.trim());
 
     if (fetchError) {
@@ -115,7 +115,7 @@ export function ImportChecklistDialog({
     }
 
     const rows = newParallels.map((p) => ({
-      set_id: setId,
+      library_set_id: setId,
       card_number: rainbowCardNumber.trim(),
       player_name: rainbowPlayerName.trim(),
       team: rainbowTeam.trim() || null,
@@ -125,7 +125,7 @@ export function ImportChecklistDialog({
     }));
 
     const { data, error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .insert(rows)
       .select();
 
@@ -164,9 +164,9 @@ export function ImportChecklistDialog({
     // Fetch existing cards to avoid duplicates
     // For multi-year sets, include year and parallel in the check
     const { data: existingCards, error: fetchError } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .select("card_number, player_name, year, parallel")
-      .eq("set_id", setId);
+      .eq("library_set_id", setId);
 
     if (fetchError) {
       console.error("Error fetching existing cards:", fetchError);
@@ -224,7 +224,7 @@ export function ImportChecklistDialog({
     }
 
     const rows = newCards.map((card) => ({
-      set_id: setId,
+      library_set_id: setId,
       card_number: card.card_number,
       player_name: card.player_name,
       team: card.team,
@@ -239,7 +239,7 @@ export function ImportChecklistDialog({
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
       const { data, error } = await supabase
-        .from("checklist_items")
+        .from("library_checklist_items")
         .insert(chunk)
         .select();
 

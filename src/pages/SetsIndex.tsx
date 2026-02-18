@@ -41,8 +41,8 @@ interface SetStats {
 }
 
 interface SetCollectionJoin {
-  set_id: string;
-  collection_id: string;
+  library_set_id: string;
+  user_collection_id: string;
 }
 
 interface CollectionWithStats extends CollectionRow {
@@ -85,9 +85,9 @@ export default function SetsIndex() {
   async function loadSetStats(setId: string) {
     // Fetch stats for a single set
     const { data: items } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .select("status")
-      .eq("set_id", setId);
+      .eq("library_set_id", setId);
 
     const stats: SetStats = { total: 0, owned: 0, pending: 0 };
 
@@ -112,9 +112,9 @@ export default function SetsIndex() {
 
     // Fetch sets, collections, and set_collections in parallel
     const [setsResult, collectionsResult, setCollectionsResult] = await Promise.all([
-      supabase.from("sets").select("*").order("updated_at", { ascending: false }),
-      supabase.from("collections").select("*").order("name"),
-      supabase.from("set_collections").select("set_id, collection_id"),
+      supabase.from("library_sets").select("*").order("updated_at", { ascending: false }),
+      supabase.from("user_collections").select("*").order("name"),
+      supabase.from("user_collection_sets").select("library_set_id, user_collection_id"),
     ]);
 
     if (setsResult.data) {
@@ -128,15 +128,15 @@ export default function SetsIndex() {
     }
 
     // Fetch all checklist items using pagination (Supabase has a default 1000 row limit)
-    const allItems: { set_id: string; status: string }[] = [];
+    const allItems: { library_set_id: string; status: string }[] = [];
     const pageSize = 1000;
     let offset = 0;
     let hasMore = true;
 
     while (hasMore) {
       const { data, error } = await supabase
-        .from("checklist_items")
-        .select("set_id, status")
+        .from("library_checklist_items")
+        .select("library_set_id, status")
         .range(offset, offset + pageSize - 1);
 
       if (error || !data) {
@@ -150,11 +150,11 @@ export default function SetsIndex() {
 
     const map = new Map<string, SetStats>();
     for (const item of allItems) {
-      const current = map.get(item.set_id) || { total: 0, owned: 0, pending: 0 };
+      const current = map.get(item.library_set_id) || { total: 0, owned: 0, pending: 0 };
       current.total++;
       if (item.status === "owned") current.owned++;
       if (item.status === "pending") current.pending++;
-      map.set(item.set_id, current);
+      map.set(item.library_set_id, current);
     }
     setStatsMap(map);
 
@@ -213,10 +213,10 @@ export default function SetsIndex() {
     // Build a map of collection ID to set IDs
     const collectionSetMap = new Map<string, Set<string>>();
     for (const join of setCollectionJoins) {
-      if (!collectionSetMap.has(join.collection_id)) {
-        collectionSetMap.set(join.collection_id, new Set());
+      if (!collectionSetMap.has(join.user_collection_id)) {
+        collectionSetMap.set(join.user_collection_id, new Set());
       }
-      collectionSetMap.get(join.collection_id)!.add(join.set_id);
+      collectionSetMap.get(join.user_collection_id)!.add(join.library_set_id);
     }
 
     // Build collection groups with stats

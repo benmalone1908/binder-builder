@@ -35,7 +35,7 @@ export function NotesDialog({
     setSaving(true);
 
     const { error } = await supabase
-      .from("sets")
+      .from("library_sets")
       .update({ notes: notes.trim() || null })
       .eq("id", setId);
 

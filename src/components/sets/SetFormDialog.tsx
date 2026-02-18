@@ -81,12 +81,12 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
       });
       // Load existing collection associations
       supabase
-        .from("set_collections")
-        .select("collection_id")
-        .eq("set_id", set.id)
+        .from("user_collection_sets")
+        .select("user_collection_id")
+        .eq("library_set_id", set.id)
         .then(({ data }) => {
           if (data) {
-            setCollectionIds(data.map((sc) => sc.collection_id));
+            setCollectionIds(data.map((sc) => sc.user_collection_id));
           }
         });
     } else {
@@ -111,7 +111,7 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
 
     if (isEditing) {
       const { error } = await supabase
-        .from("sets")
+        .from("library_sets")
         .update(values)
         .eq("id", set!.id);
 
@@ -122,11 +122,11 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
       setId = set!.id;
 
       // Update collection associations: delete existing and insert new
-      await supabase.from("set_collections").delete().eq("set_id", setId);
+      await supabase.from("user_collection_sets").delete().eq("library_set_id", setId);
       toast.success("Set updated");
     } else {
       const { data, error } = await supabase
-        .from("sets")
+        .from("library_sets")
         .insert(values)
         .select("id")
         .single();
@@ -142,10 +142,10 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
     // Insert collection associations
     if (collectionIds.length > 0) {
       const associations = collectionIds.map((collectionId) => ({
-        set_id: setId,
-        collection_id: collectionId,
+        library_set_id: setId,
+        user_collection_id: collectionId,
       }));
-      await supabase.from("set_collections").insert(associations);
+      await supabase.from("user_collection_sets").insert(associations);
     }
 
     onOpenChange(false);

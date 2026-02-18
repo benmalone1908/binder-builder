@@ -54,7 +54,7 @@ export default function CardSearch() {
   // Load sets for filter options
   useEffect(() => {
     async function loadSets() {
-      const { data } = await supabase.from("sets").select("*");
+      const { data } = await supabase.from("library_sets").select("*");
       if (data) setSets(data);
     }
     loadSets();
@@ -113,9 +113,9 @@ export default function CardSearch() {
 
     // Search checklist items
     const { data, error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .select("*")
-      .in("set_id", filteredSetIds)
+      .in("library_set_id", filteredSetIds)
       .ilike("player_name", `%${playerSearch.trim()}%`);
 
     if (error) {
@@ -127,7 +127,7 @@ export default function CardSearch() {
     // Join with set data
     const resultsWithSets: SearchResult[] = (data || []).map((item) => ({
       ...item,
-      set: sets.find((s) => s.id === item.set_id)!,
+      set: sets.find((s) => s.id === item.library_set_id)!,
     }));
 
     // Sort by year desc, then product line
@@ -144,7 +144,7 @@ export default function CardSearch() {
     if (item.status === newStatus) return;
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: newStatus })
       .eq("id", item.id);
 
@@ -284,8 +284,8 @@ export default function CardSearch() {
         <>
           <p className="text-sm text-muted-foreground">
             Found {results.length} card{results.length !== 1 ? "s" : ""} across{" "}
-            {new Set(results.map((r) => r.set_id)).size} set
-            {new Set(results.map((r) => r.set_id)).size !== 1 ? "s" : ""}
+            {new Set(results.map((r) => r.library_set_id)).size} set
+            {new Set(results.map((r) => r.library_set_id)).size !== 1 ? "s" : ""}
           </p>
           <div className="border rounded-lg overflow-hidden">
             <Table>

@@ -35,7 +35,7 @@ export function CoverImageDialog({ open, onOpenChange, set, onSuccess }: CoverIm
 
     setSaving(true);
     const { error } = await supabase
-      .from("sets")
+      .from("library_sets")
       .update({ cover_image_url: imageUrl || null })
       .eq("id", set.id);
 

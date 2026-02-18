@@ -45,7 +45,7 @@ export type Database = {
         }
         Relationships: []
       }
-      sets: {
+      library_sets: {
         Row: {
           id: string
           name: string
@@ -54,6 +54,7 @@ export type Database = {
           product_line: string
           set_type: Database["public"]["Enums"]["set_type"]
           insert_set_name: string | null
+          parent_set_id: string | null
           cover_image_url: string | null
           notes: string | null
           created_at: string
@@ -67,6 +68,7 @@ export type Database = {
           product_line: string
           set_type?: Database["public"]["Enums"]["set_type"]
           insert_set_name?: string | null
+          parent_set_id?: string | null
           cover_image_url?: string | null
           notes?: string | null
           created_at?: string
@@ -80,6 +82,7 @@ export type Database = {
           product_line?: string
           set_type?: Database["public"]["Enums"]["set_type"]
           insert_set_name?: string | null
+          parent_set_id?: string | null
           cover_image_url?: string | null
           notes?: string | null
           created_at?: string
@@ -87,10 +90,10 @@ export type Database = {
         }
         Relationships: []
       }
-      checklist_items: {
+      library_checklist_items: {
         Row: {
           id: string
-          set_id: string
+          library_set_id: string
           card_number: string
           player_name: string
           team: string | null
@@ -106,7 +109,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          set_id: string
+          library_set_id: string
           card_number: string
           player_name: string
           team?: string | null
@@ -122,7 +125,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          set_id?: string
+          library_set_id?: string
           card_number?: string
           player_name?: string
           team?: string | null
@@ -139,9 +142,82 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "checklist_items_set_id_fkey"
-            columns: ["set_id"]
+            columns: ["library_set_id"]
             isOneToOne: false
-            referencedRelation: "sets"
+            referencedRelation: "library_sets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_sets: {
+        Row: {
+          id: string
+          user_id: string
+          library_set_id: string
+          added_at: string
+          notes: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          library_set_id: string
+          added_at?: string
+          notes?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          library_set_id?: string
+          added_at?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sets_library_set_id_fkey"
+            columns: ["library_set_id"]
+            isOneToOne: false
+            referencedRelation: "library_sets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      user_card_status: {
+        Row: {
+          id: string
+          user_id: string
+          library_checklist_item_id: string
+          status: Database["public"]["Enums"]["card_status"]
+          serial_owned: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          library_checklist_item_id: string
+          status?: Database["public"]["Enums"]["card_status"]
+          serial_owned?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          library_checklist_item_id?: string
+          status?: Database["public"]["Enums"]["card_status"]
+          serial_owned?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_card_status_library_checklist_item_id_fkey"
+            columns: ["library_checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "library_checklist_items"
             referencedColumns: ["id"]
           }
         ]
@@ -200,56 +276,59 @@ export type Database = {
         }
         Relationships: []
       }
-      collections: {
+      user_collections: {
         Row: {
           id: string
+          user_id: string | null
           name: string
           created_at: string
         }
         Insert: {
           id?: string
+          user_id?: string | null
           name: string
           created_at?: string
         }
         Update: {
           id?: string
+          user_id?: string | null
           name?: string
           created_at?: string
         }
         Relationships: []
       }
-      set_collections: {
+      user_collection_sets: {
         Row: {
           id: string
-          set_id: string
-          collection_id: string
+          library_set_id: string
+          user_collection_id: string
           created_at: string
         }
         Insert: {
           id?: string
-          set_id: string
-          collection_id: string
+          library_set_id: string
+          user_collection_id: string
           created_at?: string
         }
         Update: {
           id?: string
-          set_id?: string
-          collection_id?: string
+          library_set_id?: string
+          user_collection_id?: string
           created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "set_collections_set_id_fkey"
-            columns: ["set_id"]
+            foreignKeyName: "user_collection_sets_library_set_id_fkey"
+            columns: ["library_set_id"]
             isOneToOne: false
-            referencedRelation: "sets"
+            referencedRelation: "library_sets"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "set_collections_collection_id_fkey"
-            columns: ["collection_id"]
+            foreignKeyName: "user_collection_sets_user_collection_id_fkey"
+            columns: ["user_collection_id"]
             isOneToOne: false
-            referencedRelation: "collections"
+            referencedRelation: "user_collections"
             referencedColumns: ["id"]
           }
         ]

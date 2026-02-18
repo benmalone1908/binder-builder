@@ -25,7 +25,7 @@ export function DeleteSetDialog({ open, onOpenChange, set, onSuccess }: DeleteSe
   async function handleDelete() {
     if (!set) return;
 
-    const { error } = await supabase.from("sets").delete().eq("id", set.id);
+    const { error } = await supabase.from("library_sets").delete().eq("id", set.id);
 
     if (error) {
       toast.error("Failed to delete set: " + error.message);

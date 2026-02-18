@@ -123,8 +123,8 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     setLoading(true);
 
     const [setResult, itemsResult] = await Promise.all([
-      supabase.from("sets").select("*").eq("id", setId).single(),
-      supabase.from("checklist_items").select("*").eq("set_id", setId),
+      supabase.from("library_sets").select("*").eq("id", setId).single(),
+      supabase.from("library_checklist_items").select("*").eq("library_set_id", setId),
     ]);
 
     if (setResult.error) {
@@ -340,7 +340,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     try {
       for (const update of updates) {
         const { error } = await supabase
-          .from('checklist_items')
+          .from('library_checklist_items')
           .update({ display_order: update.display_order })
           .eq('id', update.id);
 
@@ -411,7 +411,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     if (ids.length === 0) return;
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: newStatus })
       .in("id", ids);
 
@@ -435,7 +435,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     if (!confirmed) return;
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .delete()
       .in("id", ids);
 
@@ -454,7 +454,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     if (ids.length === 0) return;
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ year: newYear })
       .in("id", ids);
 

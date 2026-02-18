@@ -92,7 +92,7 @@ export function BulkStatusDialog({
     setUpdating(true);
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: targetStatus })
       .in("id", toUpdate);
 

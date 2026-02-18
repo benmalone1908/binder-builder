@@ -83,7 +83,7 @@ export function ChecklistItemRow({
     }
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ status: newStatus })
       .eq("id", item.id);
 
@@ -119,7 +119,7 @@ export function ChecklistItemRow({
     }
 
     const { error } = await supabase
-      .from("checklist_items")
+      .from("library_checklist_items")
       .update({ [editingField]: trimmed || null })
       .eq("id", item.id);
 

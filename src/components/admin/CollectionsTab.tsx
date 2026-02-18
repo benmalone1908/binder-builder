@@ -61,8 +61,8 @@ export function CollectionsTab() {
     setLoading(true);
 
     const [collectionsResult, countsResult] = await Promise.all([
-      supabase.from("collections").select("*").order("name"),
-      supabase.from("set_collections").select("collection_id"),
+      supabase.from("user_collections").select("*").order("name"),
+      supabase.from("user_collection_sets").select("user_collection_id"),
     ]);
 
     if (collectionsResult.error) {
@@ -76,7 +76,7 @@ export function CollectionsTab() {
     const countMap = new Map<string, number>();
     if (countsResult.data) {
       for (const row of countsResult.data) {
-        countMap.set(row.collection_id, (countMap.get(row.collection_id) || 0) + 1);
+        countMap.set(row.user_collection_id, (countMap.get(row.user_collection_id) || 0) + 1);
       }
     }
 
@@ -125,7 +125,7 @@ export function CollectionsTab() {
 
     if (editingCollection) {
       const { error } = await supabase
-        .from("collections")
+        .from("user_collections")
         .update({ name: name.trim() })
         .eq("id", editingCollection.id);
 
@@ -142,7 +142,7 @@ export function CollectionsTab() {
       toast.success("Collection updated");
     } else {
       const { error } = await supabase
-        .from("collections")
+        .from("user_collections")
         .insert({ name: name.trim() });
 
       if (error) {
@@ -169,7 +169,7 @@ export function CollectionsTab() {
     if (!deletingCollection) return;
 
     const { error } = await supabase
-      .from("collections")
+      .from("user_collections")
       .delete()
       .eq("id", deletingCollection.id);
 
