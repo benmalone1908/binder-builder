@@ -110,53 +110,56 @@ export default function SetsIndex() {
   async function loadData() {
     setLoading(true);
 
-    // Fetch sets, collections, and set_collections in parallel
-    const [setsResult, collectionsResult, setCollectionsResult] = await Promise.all([
-      supabase.from("library_sets").select("*").order("updated_at", { ascending: false }),
-      supabase.from("user_collections").select("*").order("name"),
-      supabase.from("user_collection_sets").select("library_set_id, user_collection_id"),
-    ]);
+    try {
+      // Fetch sets, collections, and set_collections in parallel
+      const [setsResult, collectionsResult, setCollectionsResult] = await Promise.all([
+        supabase.from("library_sets").select("*").order("updated_at", { ascending: false }),
+        supabase.from("user_collections").select("*").order("name"),
+        supabase.from("user_collection_sets").select("library_set_id, user_collection_id"),
+      ]);
 
-    if (setsResult.data) {
-      setSets(setsResult.data);
-    }
-    if (collectionsResult.data) {
-      setCollections(collectionsResult.data);
-    }
-    if (setCollectionsResult.data) {
-      setSetCollectionJoins(setCollectionsResult.data);
-    }
+      if (setsResult.error) console.error("Sets query error:", setsResult.error);
+      if (collectionsResult.error) console.error("Collections query error:", collectionsResult.error);
+      if (setCollectionsResult.error) console.error("Collection sets query error:", setCollectionsResult.error);
 
-    // Fetch all checklist items using pagination (Supabase has a default 1000 row limit)
-    const allItems: { library_set_id: string; status: string }[] = [];
-    const pageSize = 1000;
-    let offset = 0;
-    let hasMore = true;
+      if (setsResult.data) setSets(setsResult.data);
+      if (collectionsResult.data) setCollections(collectionsResult.data);
+      if (setCollectionsResult.data) setSetCollectionJoins(setCollectionsResult.data);
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from("library_checklist_items")
-        .select("library_set_id, status")
-        .range(offset, offset + pageSize - 1);
+      // Fetch all checklist items using pagination (Supabase has a default 1000 row limit)
+      const allItems: { library_set_id: string; status: string }[] = [];
+      const pageSize = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-      if (error || !data) {
-        hasMore = false;
-      } else {
-        allItems.push(...data);
-        hasMore = data.length === pageSize;
-        offset += pageSize;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("library_checklist_items")
+          .select("library_set_id, status")
+          .range(offset, offset + pageSize - 1);
+
+        if (error || !data) {
+          if (error) console.error("Checklist items query error:", error);
+          hasMore = false;
+        } else {
+          allItems.push(...data);
+          hasMore = data.length === pageSize;
+          offset += pageSize;
+        }
       }
-    }
 
-    const map = new Map<string, SetStats>();
-    for (const item of allItems) {
-      const current = map.get(item.library_set_id) || { total: 0, owned: 0, pending: 0 };
-      current.total++;
-      if (item.status === "owned") current.owned++;
-      if (item.status === "pending") current.pending++;
-      map.set(item.library_set_id, current);
+      const map = new Map<string, SetStats>();
+      for (const item of allItems) {
+        const current = map.get(item.library_set_id) || { total: 0, owned: 0, pending: 0 };
+        current.total++;
+        if (item.status === "owned") current.owned++;
+        if (item.status === "pending") current.pending++;
+        map.set(item.library_set_id, current);
+      }
+      setStatsMap(map);
+    } catch (err) {
+      console.error("loadData error:", err);
     }
-    setStatsMap(map);
 
     setLoading(false);
   }

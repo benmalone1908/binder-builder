@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,14 +31,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialLoadDone = useRef(false);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-    setProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if (error) {
+        console.error("Failed to fetch profile:", error);
+        setProfile(null);
+        return;
+      }
+      setProfile(data);
+    } catch (err) {
+      console.error("Profile fetch error:", err);
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
@@ -49,20 +60,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         await fetchProfile(session.user.id);
       }
+      initialLoadDone.current = true;
+      setLoading(false);
+    }).catch((err) => {
+      console.error("getSession error:", err);
+      initialLoadDone.current = true;
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (sign in, sign out, token refresh)
+    // After initial load, update state silently without flashing loading
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setProfile(null);
+        try {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          } else {
+            setProfile(null);
+          }
+        } catch (err) {
+          console.error("Auth state change error:", err);
         }
-        setLoading(false);
+        // Only set loading=false if this is the first auth event (before getSession resolves)
+        if (!initialLoadDone.current) {
+          initialLoadDone.current = true;
+          setLoading(false);
+        }
       }
     );
 
