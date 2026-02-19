@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,7 @@ const SET_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function SetsIndex() {
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const [sets, setSets] = useState<SetRow[]>([]);
   const [statsMap, setStatsMap] = useState<Map<string, SetStats>>(new Map());
@@ -425,7 +427,7 @@ export default function SetsIndex() {
                 {searchTerm ? "No sets match your search." : "No sets in your collection yet."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                <Button onClick={() => navigate("/library")} variant="outline">
                   Browse Library
                 </Button>
               )}
@@ -660,7 +662,7 @@ export default function SetsIndex() {
                 {searchTerm ? "No multi-year sets match your search." : "No multi-year sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                <Button onClick={() => navigate("/library")} variant="outline">
                   Browse Library
                 </Button>
               )}
@@ -779,7 +781,7 @@ export default function SetsIndex() {
                 {searchTerm ? "No rainbow sets match your search." : "No rainbow sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => window.location.href = "/library"} variant="outline">
+                <Button onClick={() => navigate("/library")} variant="outline">
                   Browse Library
                 </Button>
               )}

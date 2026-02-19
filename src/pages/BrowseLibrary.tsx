@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Check, Search, ImageOff } from "lucide-react";
+import { Plus, Check, Search, ImageOff, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -7,6 +7,14 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -37,6 +45,7 @@ export default function BrowseLibrary() {
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [previewSetId, setPreviewSetId] = useState<string | null>(null);
 
   async function loadData() {
@@ -77,7 +86,10 @@ export default function BrowseLibrary() {
   }, [librarySets]);
 
   const filtered = useMemo(() => {
-    let result = librarySets;
+    // Exclude rainbow and multi-year sets from the library browser
+    let result = librarySets.filter(
+      (s) => s.set_type !== "rainbow" && s.set_type !== "multi_year_insert"
+    );
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -184,87 +196,170 @@ export default function BrowseLibrary() {
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="base">Base</SelectItem>
             <SelectItem value="insert">Insert</SelectItem>
-            <SelectItem value="rainbow">Rainbow</SelectItem>
-            <SelectItem value="multi_year_insert">Multi-Year</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center border rounded-md">
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="sm"
+            className="rounded-r-none"
+            onClick={() => setViewMode("grid")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="sm"
+            className="rounded-l-none"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <p className="text-sm text-muted-foreground">
         {filtered.length} set{filtered.length !== 1 ? "s" : ""} found
       </p>
 
-      {/* Set grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filtered.map((set) => {
-          const inCollection = userSetIds.has(set.id);
-          const isAdding = adding === set.id;
+      {viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((set) => {
+            const inCollection = userSetIds.has(set.id);
+            const isAdding = adding === set.id;
 
-          return (
-            <div
-              key={set.id}
-              className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-card"
-            >
-              {/* Cover image area */}
-              <button
-                type="button"
-                className="w-full h-32 bg-muted flex items-center justify-center cursor-pointer"
-                onClick={() => setPreviewSetId(set.id)}
+            return (
+              <div
+                key={set.id}
+                className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow bg-card"
               >
-                {set.cover_image_url ? (
-                  <img
-                    src={set.cover_image_url}
-                    alt={set.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <ImageOff className="w-8 h-8 text-muted-foreground/30" />
-                )}
-              </button>
-
-              {/* Set info */}
-              <div className="p-3 space-y-2">
                 <button
                   type="button"
-                  className="text-left w-full"
+                  className="w-full h-32 bg-muted flex items-center justify-center cursor-pointer"
                   onClick={() => setPreviewSetId(set.id)}
                 >
-                  <h3 className="font-semibold text-sm truncate">{set.name}</h3>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                    <span>{set.year}</span>
-                    <span>{set.brand}</span>
-                    <span>{set.product_line}</span>
-                  </div>
+                  {set.cover_image_url ? (
+                    <img
+                      src={set.cover_image_url}
+                      alt={set.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <ImageOff className="w-8 h-8 text-muted-foreground/30" />
+                  )}
                 </button>
 
-                <div className="flex items-center justify-between">
-                  <Badge variant="secondary" className="text-xs">
-                    {SET_TYPE_LABELS[set.set_type] || set.set_type}
-                  </Badge>
+                <div className="p-3 space-y-2">
+                  <button
+                    type="button"
+                    className="text-left w-full"
+                    onClick={() => setPreviewSetId(set.id)}
+                  >
+                    <h3 className="font-semibold text-sm truncate">{set.name}</h3>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                      <span>{set.year}</span>
+                      <span>{set.brand}</span>
+                      <span>{set.product_line}</span>
+                    </div>
+                  </button>
 
-                  {inCollection ? (
-                    <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
-                      <Check className="h-3 w-3 mr-1" />
-                      In Collection
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary" className="text-xs">
+                      {SET_TYPE_LABELS[set.set_type] || set.set_type}
                     </Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      disabled={isAdding}
-                      onClick={() => handleAddToCollection(set.id)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      {isAdding ? "Adding..." : "Add"}
-                    </Button>
-                  )}
+
+                    {inCollection ? (
+                      <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
+                        <Check className="h-3 w-3 mr-1" />
+                        In Collection
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={isAdding}
+                        onClick={() => handleAddToCollection(set.id)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        {isAdding ? "Adding..." : "Add"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-20"></TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="w-16">Year</TableHead>
+                <TableHead>Brand</TableHead>
+                <TableHead>Product Line</TableHead>
+                <TableHead className="w-24">Type</TableHead>
+                <TableHead className="w-32 text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((set) => {
+                const inCollection = userSetIds.has(set.id);
+                const isAdding = adding === set.id;
+
+                return (
+                  <TableRow
+                    key={set.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setPreviewSetId(set.id)}
+                  >
+                    <TableCell className="py-2">
+                      {set.cover_image_url ? (
+                        <img src={set.cover_image_url} alt="" className="w-16 h-22 object-contain rounded border bg-muted" />
+                      ) : (
+                        <div className="w-16 h-22 rounded border bg-muted flex items-center justify-center">
+                          <ImageOff className="w-4 h-4 text-muted-foreground/30" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{set.name}</TableCell>
+                    <TableCell>{set.year}</TableCell>
+                    <TableCell>{set.brand}</TableCell>
+                    <TableCell>{set.product_line}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {SET_TYPE_LABELS[set.set_type] || set.set_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      {inCollection ? (
+                        <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
+                          <Check className="h-3 w-3 mr-1" />
+                          In Collection
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          disabled={isAdding}
+                          onClick={() => handleAddToCollection(set.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {isAdding ? "Adding..." : "Add"}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {filtered.length === 0 && (
         <div className="text-center py-12 border rounded-lg bg-muted/20">
