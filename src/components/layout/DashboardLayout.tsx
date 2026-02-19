@@ -1,6 +1,6 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Library, Menu, Search, Settings, BookOpen, LogOut } from "lucide-react";
+import { Library, Menu, Search, Settings, BookOpen, LogOut, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { isAdmin, profile, signOut } = useAuth();
   const navigate = useNavigate();
+
+  const trialDaysRemaining = useMemo(() => {
+    if (!profile) return null;
+    if (profile.subscription_status !== "trial") return null;
+    if (!profile.trial_ends_at) return null;
+    const diff = new Date(profile.trial_ends_at).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [profile]);
 
   async function handleSignOut() {
     await signOut();
@@ -137,6 +145,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <img src="/image.png" alt="Bindered logo" style={{ height: '75px' }} />
           </div>
         </header>
+        {trialDaysRemaining !== null && trialDaysRemaining <= 7 && (
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b",
+            trialDaysRemaining <= 1
+              ? "bg-red-50 text-red-800 border-red-200"
+              : trialDaysRemaining <= 3
+                ? "bg-amber-50 text-amber-800 border-amber-200"
+                : "bg-blue-50 text-blue-800 border-blue-200"
+          )}>
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {trialDaysRemaining === 0
+              ? "Your free trial expires today."
+              : trialDaysRemaining === 1
+                ? "Your free trial expires tomorrow."
+                : `Your free trial expires in ${trialDaysRemaining} days.`}
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

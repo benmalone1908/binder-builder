@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReferenceDataTab } from "@/components/admin/ReferenceDataTab";
 import { CollectionsTab } from "@/components/admin/CollectionsTab";
+import { UsersTab } from "@/components/admin/UsersTab";
 
 export default function Admin() {
   return (
@@ -12,13 +13,18 @@ export default function Admin() {
         </p>
       </div>
 
-      <Tabs defaultValue="brands">
+      <Tabs defaultValue="users">
         <TabsList>
+          <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="brands">Brands</TabsTrigger>
           <TabsTrigger value="product_lines">Product Lines</TabsTrigger>
           <TabsTrigger value="insert_sets">Insert Sets</TabsTrigger>
           <TabsTrigger value="collections">Collections</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users" className="mt-6">
+          <UsersTab />
+        </TabsContent>
 
         <TabsContent value="brands" className="mt-6">
           <ReferenceDataTab table="brands" title="Brands" />
