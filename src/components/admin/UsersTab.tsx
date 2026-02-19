@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,7 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Shield, ShieldOff } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Search, Shield, ShieldOff, UserPlus } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -37,6 +46,11 @@ export function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [setCounts, setSetCounts] = useState<Map<string, number>>(new Map());
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newName, setNewName] = useState("");
 
   async function loadUsers() {
     setLoading(true);
@@ -138,6 +152,47 @@ export function UsersTab() {
     loadUsers();
   }
 
+  async function createUser() {
+    if (!newEmail || !newPassword) {
+      toast.error("Email and password are required");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: { email: newEmail, password: newPassword, fullName: newName },
+      });
+
+      if (error) {
+        // Extract the actual error message from the edge function response
+        let msg = error.message;
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {}
+        toast.error("Failed to create user: " + msg);
+        setCreating(false);
+        return;
+      }
+
+      if (data?.error) {
+        toast.error("Failed to create user: " + data.error);
+        setCreating(false);
+        return;
+      }
+
+      toast.success(`User ${newEmail} created`);
+      setAddUserOpen(false);
+      setNewEmail("");
+      setNewPassword("");
+      setNewName("");
+      loadUsers();
+    } catch (err: any) {
+      toast.error("Failed to create user: " + (err.message || "Unknown error"));
+    }
+    setCreating(false);
+  }
+
   function formatDate(dateStr: string | null) {
     if (!dateStr) return "—";
     return new Date(dateStr).toLocaleDateString("en-US", {
@@ -183,6 +238,10 @@ export function UsersTab() {
         <span className="text-sm text-muted-foreground">
           {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""}
         </span>
+        <Button onClick={() => setAddUserOpen(true)} size="sm" className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          Add User
+        </Button>
       </div>
 
       <div className="border rounded-lg overflow-hidden">
@@ -296,6 +355,56 @@ export function UsersTab() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={addUserOpen} onOpenChange={setAddUserOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+            <DialogDescription>
+              Create a new user account. They'll start with a 14-day trial.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-email">Email</Label>
+              <Input
+                id="new-email"
+                type="email"
+                placeholder="user@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-name">Full Name (optional)</Label>
+              <Input
+                id="new-name"
+                placeholder="John Doe"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Minimum 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddUserOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createUser} disabled={creating || !newEmail || !newPassword}>
+              {creating ? "Creating..." : "Create User"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
