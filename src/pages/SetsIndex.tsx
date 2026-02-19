@@ -346,12 +346,10 @@ export default function SetsIndex() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Sets</h1>
-        {isAdmin && (
-          <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Set
-          </Button>
-        )}
+        <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Set
+        </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>

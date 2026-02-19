@@ -153,12 +153,10 @@ export default function BrowseLibrary() {
             Explore the card set catalog and add sets to your collection.
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setFormOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Set
-          </Button>
-        )}
+        <Button onClick={() => setFormOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          New Set
+        </Button>
       </div>
 
       {/* Filters */}
@@ -386,14 +384,12 @@ export default function BrowseLibrary() {
         }}
       />
 
-      {isAdmin && (
-        <SetFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          set={null}
-          onSuccess={loadData}
-        />
-      )}
+      <SetFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        set={null}
+        onSuccess={loadData}
+      />
     </div>
   );
 }
