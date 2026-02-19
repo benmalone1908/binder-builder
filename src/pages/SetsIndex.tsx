@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette } from "lucide-react";
+import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -346,6 +346,12 @@ export default function SetsIndex() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Sets</h1>
+        {isAdmin && (
+          <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Set
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>

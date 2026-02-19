@@ -7,6 +7,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import {
   Table,
   TableBody,
@@ -34,7 +35,7 @@ const SET_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function BrowseLibrary() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [librarySets, setLibrarySets] = useState<LibrarySet[]>([]);
   const [userSetIds, setUserSetIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,7 @@ export default function BrowseLibrary() {
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [previewSetId, setPreviewSetId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -144,11 +146,19 @@ export default function BrowseLibrary() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold">Browse Library</h1>
-        <p className="text-sm text-muted-foreground">
-          Explore the card set catalog and add sets to your collection.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Browse Library</h1>
+          <p className="text-sm text-muted-foreground">
+            Explore the card set catalog and add sets to your collection.
+          </p>
+        </div>
+        {isAdmin && (
+          <Button onClick={() => setFormOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Set
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -375,6 +385,15 @@ export default function BrowseLibrary() {
           if (!open) setPreviewSetId(null);
         }}
       />
+
+      {isAdmin && (
+        <SetFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          set={null}
+          onSuccess={loadData}
+        />
+      )}
     </div>
   );
 }
