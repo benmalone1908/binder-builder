@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SubscriptionRequired() {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const trialExpired =
     profile?.subscription_status === "trial" &&
@@ -33,7 +35,7 @@ export default function SubscriptionRequired() {
               Signed in as {profile.email}
             </p>
           )}
-          <Button variant="outline" onClick={() => signOut()} className="w-full max-w-[200px]">
+          <Button variant="outline" onClick={async () => { await signOut(); navigate("/login"); }} className="w-full max-w-[200px]">
             Sign Out
           </Button>
         </CardContent>

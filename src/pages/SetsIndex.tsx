@@ -230,7 +230,7 @@ export default function SetsIndex() {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [user?.id]);
 
   const filteredSets = useMemo(() => {
     let result = sets;

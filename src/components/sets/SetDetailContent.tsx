@@ -188,7 +188,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     setItems(mergedItems);
     setSelectedIds(new Set());
     setLoading(false);
-  }, [setId, isCompact, onClose, navigate, user]);
+  }, [setId, isCompact, onClose, navigate, user?.id]);
 
   useEffect(() => {
     loadData();

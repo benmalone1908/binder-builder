@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,6 +16,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  profileLoaded: boolean;
   isAdmin: boolean;
   hasAccess: boolean;
   loading: boolean;
@@ -31,25 +32,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const initialLoadDone = useRef(false);
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-      if (error) {
-        console.error("Failed to fetch profile:", error);
-        setProfile(null);
-        return;
+      const result = await Promise.race([
+        supabase
+          .from("user_profiles")
+          .select("*")
+          .eq("id", userId)
+          .single(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Profile fetch timed out")), 5000)
+        ),
+      ]);
+      if (result.error) {
+        console.error("Failed to fetch profile:", result.error);
+        // Only clear profile if we don't already have one (initial load).
+        // On re-fetches (tab focus, token refresh), keep the existing profile.
+        setProfile((prev) => prev ?? null);
+      } else {
+        setProfile(result.data);
       }
-      setProfile(data);
     } catch (err) {
       console.error("Profile fetch error:", err);
-      setProfile(null);
+      setProfile((prev) => prev ?? null);
     }
+    setProfileLoaded(true);
   };
 
   useEffect(() => {
@@ -71,15 +81,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes (sign in, sign out, token refresh)
     // After initial load, update state silently without flashing loading
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         try {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
+          if (event === "SIGNED_OUT") {
+            setSession(null);
+            setUser(null);
             setProfile(null);
+            setProfileLoaded(false);
+          } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+              await fetchProfile(session.user.id);
+            }
           }
+          // TOKEN_REFRESHED and other events: no state updates needed.
+          // Supabase client internally updates its token; we don't need to
+          // re-render the app for token refreshes.
         } catch (err) {
           console.error("Auth state change error:", err);
         }
@@ -127,12 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileLoaded(false);
   };
 
+  const value = useMemo(
+    () => ({ user, session, profile, profileLoaded, isAdmin, hasAccess, loading, signIn, signUp, signOut }),
+    [user, session, profile, profileLoaded, isAdmin, hasAccess, loading]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{ user, session, profile, isAdmin, hasAccess, loading, signIn, signUp, signOut }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
