@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { SPORTS, SPORT_LABELS } from "@/lib/sports";
+import type { Sport } from "@/lib/sports";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import {
   Table,
@@ -45,6 +48,7 @@ export default function BrowseLibrary() {
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sportFilter, setSportFilter] = useState<Sport | "all">("baseball");
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [previewSetId, setPreviewSetId] = useState<string | null>(null);
@@ -93,6 +97,11 @@ export default function BrowseLibrary() {
       (s) => s.set_type !== "rainbow" && s.set_type !== "multi_year_insert"
     );
 
+    // Filter by sport
+    if (sportFilter !== "all") {
+      result = result.filter((s) => (s as any).sport === sportFilter);
+    }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -114,7 +123,7 @@ export default function BrowseLibrary() {
     }
 
     return result;
-  }, [librarySets, searchTerm, yearFilter, brandFilter, typeFilter]);
+  }, [librarySets, searchTerm, yearFilter, brandFilter, typeFilter, sportFilter]);
 
   async function handleAddToCollection(librarySetId: string) {
     if (!user) return;
@@ -158,6 +167,17 @@ export default function BrowseLibrary() {
           New Set
         </Button>
       </div>
+
+      <Tabs value={sportFilter} onValueChange={(v) => setSportFilter(v as Sport | "all")}>
+        <TabsList>
+          {SPORTS.map((sport) => (
+            <TabsTrigger key={sport} value={sport}>
+              {SPORT_LABELS[sport]}
+            </TabsTrigger>
+          ))}
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
