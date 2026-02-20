@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { setFormSchema, type SetFormValues } from "@/lib/schemas";
+import { SPORT_LABELS } from "@/lib/sports";
+import type { Sport } from "@/lib/sports";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   Dialog,
@@ -56,6 +58,7 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
   const form = useForm<SetFormValues>({
     resolver: zodResolver(setFormSchema),
     defaultValues: {
+      sport: "baseball",
       name: "",
       year: new Date().getFullYear(),
       brand: "",
@@ -70,6 +73,7 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
   useEffect(() => {
     if (set) {
       form.reset({
+        sport: (set.sport as Sport) || "baseball",
         name: set.name,
         year: set.year,
         brand: set.brand,
@@ -91,6 +95,7 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
         });
     } else {
       form.reset({
+        sport: "baseball",
         name: "",
         year: new Date().getFullYear(),
         brand: "",
@@ -160,6 +165,31 @@ export function SetFormDialog({ open, onOpenChange, set, onSuccess }: SetFormDia
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="sport"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sport</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Object.entries(SPORT_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="name"

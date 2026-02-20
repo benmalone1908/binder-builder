@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { SPORTS } from "./sports";
 
 export const setFormSchema = z.object({
+  sport: z.enum(SPORTS).default("baseball"),
   name: z.string().min(1, "Name is required"),
   year: z.coerce.number().int().min(1900, "Year must be 1900 or later").max(2100, "Year must be 2100 or earlier"),
   brand: z.string().min(1, "Brand is required"),
