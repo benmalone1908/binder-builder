@@ -23,6 +23,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SPORTS, SPORT_LABELS } from "@/lib/sports";
+import type { Sport } from "@/lib/sports";
 import { SetCard } from "@/components/sets/SetCard";
 import { SetFormDialog } from "@/components/sets/SetFormDialog";
 import { DeleteSetDialog } from "@/components/sets/DeleteSetDialog";
@@ -72,6 +74,7 @@ export default function SetsIndex() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<SetTab>("regular");
+  const [sportFilter, setSportFilter] = useState<Sport | "all">("baseball");
   const [groupBy, setGroupBy] = useState<GroupBy>("year");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
@@ -237,6 +240,11 @@ export default function SetsIndex() {
   const filteredSets = useMemo(() => {
     let result = sets;
 
+    // Filter by sport
+    if (sportFilter !== "all") {
+      result = result.filter((s) => (s as any).sport === sportFilter);
+    }
+
     // Filter by tab (regular vs multi-year vs rainbow)
     if (activeTab === "regular") {
       result = result.filter((s) => s.set_type !== "multi_year_insert" && s.set_type !== "rainbow");
@@ -260,7 +268,7 @@ export default function SetsIndex() {
     }
 
     return result;
-  }, [sets, searchTerm, activeTab]);
+  }, [sets, searchTerm, activeTab, sportFilter]);
 
   const setsByYear = useMemo(() => {
     const grouped = new Map<number, SetRow[]>();
@@ -351,6 +359,17 @@ export default function SetsIndex() {
           New Set
         </Button>
       </div>
+
+      <Tabs value={sportFilter} onValueChange={(v) => setSportFilter(v as Sport | "all")}>
+        <TabsList>
+          {SPORTS.map((sport) => (
+            <TabsTrigger key={sport} value={sport}>
+              {SPORT_LABELS[sport]}
+            </TabsTrigger>
+          ))}
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
