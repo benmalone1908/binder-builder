@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
+import { SPORT_LABELS } from "@/lib/sports";
+import type { Sport } from "@/lib/sports";
 import {
   DndContext,
   closestCenter,
@@ -594,6 +596,14 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             <Badge variant="secondary" className={isCompact ? "text-xs" : ""}>
               {SET_TYPE_LABELS[set.set_type] || set.set_type}
             </Badge>
+            {set.sport && set.sport !== "baseball" && (
+              <Badge variant="outline" className={cn(
+                "text-amber-800 border-amber-300 bg-amber-50",
+                isCompact && "text-xs"
+              )}>
+                {SPORT_LABELS[set.sport as Sport] || set.sport}
+              </Badge>
+            )}
           </div>
           {set.insert_set_name && (
             <div className="mt-1">
