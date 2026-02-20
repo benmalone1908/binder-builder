@@ -57,6 +57,7 @@ export type Database = {
           parent_set_id: string | null
           cover_image_url: string | null
           notes: string | null
+          sport: string
           created_at: string
           updated_at: string
         }
@@ -71,6 +72,7 @@ export type Database = {
           parent_set_id?: string | null
           cover_image_url?: string | null
           notes?: string | null
+          sport?: string
           created_at?: string
           updated_at?: string
         }
@@ -85,6 +87,7 @@ export type Database = {
           parent_set_id?: string | null
           cover_image_url?: string | null
           notes?: string | null
+          sport?: string
           created_at?: string
           updated_at?: string
         }
