@@ -596,7 +596,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
             <Badge variant="secondary" className={isCompact ? "text-xs" : ""}>
               {SET_TYPE_LABELS[set.set_type] || set.set_type}
             </Badge>
-            {set.sport && set.sport !== "baseball" && (
+            {set.sport && (
               <Badge variant="outline" className={cn(
                 "text-amber-800 border-amber-300 bg-amber-50",
                 isCompact && "text-xs"
