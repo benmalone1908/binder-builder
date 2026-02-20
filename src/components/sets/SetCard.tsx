@@ -1,5 +1,7 @@
 import { MoreVertical, Pencil, Trash2, Layers, Package, Tag, ImageOff, ImagePlus } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import { SPORT_LABELS } from "@/lib/sports";
+import type { Sport } from "@/lib/sports";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,9 +39,10 @@ interface SetCardProps {
   onDelete: (set: SetRow) => void;
   onEditImage: (set: SetRow) => void;
   onClick?: () => void;
+  showSportBadge?: boolean;
 }
 
-export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick }: SetCardProps) {
+export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick, showSportBadge }: SetCardProps) {
   const completionPct = stats.total > 0 ? Math.round((stats.owned / stats.total) * 100) : 0;
   const typeStyle = SET_TYPE_COLORS[set.set_type] || SET_TYPE_COLORS.base;
 
@@ -152,6 +155,17 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick }: 
 
           {/* Metadata pills */}
           <div className="px-3 pb-2 flex flex-wrap items-center gap-1">
+            {showSportBadge && (set as any).sport && (
+              <span className={`
+                inline-flex items-center gap-0.5 px-1.5 py-0.5
+                text-[10px] font-medium rounded-full
+                bg-amber-100/80 backdrop-blur-sm
+                text-amber-800
+                border border-amber-200
+              `}>
+                {SPORT_LABELS[(set as any).sport as Sport] || (set as any).sport}
+              </span>
+            )}
             <span className={`
               inline-flex items-center gap-0.5 px-1.5 py-0.5
               text-[10px] font-medium rounded-full

@@ -505,6 +505,7 @@ export default function SetsIndex() {
                             onDelete={handleDelete}
                             onEditImage={handleEditImage}
                             onClick={() => setFlyoutSetId(set.id)}
+                            showSportBadge={sportFilter === "all"}
                           />
                         ))}
                       </div>
@@ -575,6 +576,7 @@ export default function SetsIndex() {
                         onDelete={handleDelete}
                         onEditImage={handleEditImage}
                         onClick={() => setFlyoutSetId(set.id)}
+                        showSportBadge={sportFilter === "all"}
                       />
                     ))}
                   </div>
@@ -701,6 +703,7 @@ export default function SetsIndex() {
                   onDelete={handleDelete}
                   onEditImage={handleEditImage}
                   onClick={() => setFlyoutSetId(set.id)}
+                  showSportBadge={sportFilter === "all"}
                 />
               ))}
             </div>
@@ -820,6 +823,7 @@ export default function SetsIndex() {
                   onDelete={handleDelete}
                   onEditImage={handleEditImage}
                   onClick={() => setFlyoutSetId(set.id)}
+                  showSportBadge={sportFilter === "all"}
                 />
               ))}
             </div>
