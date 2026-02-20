@@ -50,6 +50,13 @@ import {
 import { ChecklistItemRow } from "@/components/checklist/ChecklistItemRow";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type SetRow = Tables<"library_sets">;
 type ChecklistItem = Tables<"library_checklist_items">;
@@ -691,28 +698,25 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
 
           {/* Year filter for multi-year sets */}
           {isMultiYear && availableYears.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">Year:</span>
-              <Button
-                size="sm"
-                variant={yearFilter === "all" ? "default" : "outline"}
-                onClick={() => setYearFilter("all")}
+            <div className="flex items-center gap-2">
+              <Select
+                value={yearFilter === "all" ? "all" : String(yearFilter)}
+                onValueChange={(v) => setYearFilter(v === "all" ? "all" : parseInt(v))}
               >
-                All
-              </Button>
-              {availableYears.map((year) => (
-                <Button
-                  key={year}
-                  size="sm"
-                  variant={yearFilter === year ? "default" : "outline"}
-                  onClick={() => setYearFilter(year)}
-                >
-                  {year}
-                </Button>
-              ))}
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {yearFilter === "all" && (
                 <>
-                  <span className="text-muted-foreground mx-1">|</span>
                   <Button
                     size="sm"
                     variant="ghost"
