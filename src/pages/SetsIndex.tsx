@@ -450,9 +450,15 @@ export default function SetsIndex() {
                 {searchTerm ? "No sets match your search." : "No sets in your collection yet."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => navigate("/library")} variant="outline">
-                  Browse Library
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button onClick={() => navigate("/library")} variant="outline">
+                    Browse Library
+                  </Button>
+                  <span className="text-muted-foreground">or</span>
+                  <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} variant="outline">
+                    Add a New Set
+                  </Button>
+                </div>
               )}
             </div>
           ) : groupBy === "collection" ? (
@@ -687,9 +693,15 @@ export default function SetsIndex() {
                 {searchTerm ? "No multi-year sets match your search." : "No multi-year sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => navigate("/library")} variant="outline">
-                  Browse Library
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button onClick={() => navigate("/library")} variant="outline">
+                    Browse Library
+                  </Button>
+                  <span className="text-muted-foreground">or</span>
+                  <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} variant="outline">
+                    Add a New Set
+                  </Button>
+                </div>
               )}
             </div>
           ) : viewMode === "grid" ? (
@@ -807,9 +819,15 @@ export default function SetsIndex() {
                 {searchTerm ? "No rainbow sets match your search." : "No rainbow sets in your collection."}
               </p>
               {!searchTerm && (
-                <Button onClick={() => navigate("/library")} variant="outline">
-                  Browse Library
-                </Button>
+                <div className="flex items-center justify-center gap-3">
+                  <Button onClick={() => navigate("/library")} variant="outline">
+                    Browse Library
+                  </Button>
+                  <span className="text-muted-foreground">or</span>
+                  <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} variant="outline">
+                    Add a New Set
+                  </Button>
+                </div>
               )}
             </div>
           ) : viewMode === "grid" ? (
