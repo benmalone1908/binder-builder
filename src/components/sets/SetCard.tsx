@@ -155,7 +155,7 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick, sh
 
           {/* Metadata pills */}
           <div className="px-3 pb-2 flex flex-wrap items-center gap-1">
-            {showSportBadge && (set as any).sport && (
+            {showSportBadge && set.sport && (
               <span className={`
                 inline-flex items-center gap-0.5 px-1.5 py-0.5
                 text-[10px] font-medium rounded-full
@@ -163,7 +163,7 @@ export function SetCard({ set, stats, onEdit, onDelete, onEditImage, onClick, sh
                 text-amber-800
                 border border-amber-200
               `}>
-                {SPORT_LABELS[(set as any).sport as Sport] || (set as any).sport}
+                {SPORT_LABELS[set.sport as Sport] || set.sport}
               </span>
             )}
             <span className={`

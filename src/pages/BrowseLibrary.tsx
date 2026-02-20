@@ -99,7 +99,7 @@ export default function BrowseLibrary() {
 
     // Filter by sport
     if (sportFilter !== "all") {
-      result = result.filter((s) => (s as any).sport === sportFilter);
+      result = result.filter((s) => s.sport === sportFilter);
     }
 
     if (searchTerm) {

@@ -242,7 +242,7 @@ export default function SetsIndex() {
 
     // Filter by sport
     if (sportFilter !== "all") {
-      result = result.filter((s) => (s as any).sport === sportFilter);
+      result = result.filter((s) => s.sport === sportFilter);
     }
 
     // Filter by tab (regular vs multi-year vs rainbow)
