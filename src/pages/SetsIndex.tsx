@@ -959,10 +959,8 @@ export default function SetsIndex() {
         open={!!flyoutSetId}
         onOpenChange={(open) => {
           if (!open) {
-            // Refresh only the specific set's stats
-            if (flyoutSetId) {
-              loadSetStats(flyoutSetId);
-            }
+            // Refresh set data and stats when flyout closes
+            loadData();
             setFlyoutSetId(null);
           }
         }}
