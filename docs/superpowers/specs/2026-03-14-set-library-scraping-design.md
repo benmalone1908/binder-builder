@@ -29,6 +29,21 @@ Three new nullable columns:
 
 The `source_ref` unique constraint prevents duplicate imports across discovery runs.
 
+### Changes to `set_type` enum
+
+The existing `set_type` enum (`base | insert | rainbow | multi_year_insert`) gains one new value:
+
+- **`parallel`** — a full parallel set (all cards in the set, one color/variation); child of a `base` or `insert` set via `parent_set_id`
+- **`rainbow`** remains — card-level variant tracking within a set (multiple parallels of individual cards)
+
+### `parent_set_id` usage
+
+`library_sets.parent_set_id` already exists. It is used to express:
+- Insert set → base set
+- Parallel set → base set or insert set
+
+A set with no `parent_set_id` is a top-level set.
+
 Migration DDL for new columns:
 ```sql
 ALTER TABLE library_sets
@@ -38,6 +53,10 @@ ALTER TABLE library_sets
 
 ALTER TABLE library_checklist_items
   ADD COLUMN notes text;
+
+-- Add parallel to set_type enum
+-- NOTE: must run outside a transaction block in PostgreSQL
+ALTER TYPE set_type ADD VALUE 'parallel';
 ```
 
 ### Changes to `library_checklist_items`
@@ -74,8 +93,8 @@ Where `SetMetadata` is:
   name: string;
   year: number;
   sport: string;
-  brand?: string;
-  product_line?: string;
+  brand?: string;         // defaults to '' if not provided — avoids null guard work in existing code
+  product_line?: string;  // defaults to '' if not provided
   set_type?: string;
 }
 ```
@@ -84,7 +103,7 @@ Where `SetMetadata` is:
 
 - Calls Firecrawl on the specific set page
 - Parses the returned markdown table via a pure `parseExternalChecklist()` function
-- Inserts (or upserts on `source_ref`) a row into `library_sets` with `scrape_status = pending` — this is the moment the library row is created; discovery does not write to the DB
+- Inserts a new row into `library_sets` with `scrape_status = pending` — this is the moment the library row is created; discovery does not write to the DB. The unique constraint on `source_ref` acts as a server-side safety net; if a duplicate insert arrives concurrently, the constraint violation is treated as a no-op (the function proceeds to scrape).
 - On success: updates `scrape_status = scraped`; on error: updates `scrape_status = failed`
 - Bulk-inserts into `library_checklist_items`
 - Returns summary of cards inserted and any parse warnings
@@ -129,12 +148,25 @@ Fields: Year (number input) + Sport (dropdown: Baseball, Football, Basketball, H
 Results table columns: **Set Name** | **Cards** | **Status** | **Action**
 
 - On page load, the admin UI fetches all existing `source_ref` values from `library_sets` (single query). When discovery results arrive, each row's status is resolved client-side by checking against this fetched set — no extra network call per row.
-- Status values: "In Library" (grey, no action), "Failed" (red, re-scrapeable), or blank (not yet imported)
-- Action: "Scrape" button per row — one at a time, no bulk scrape; shown for unimported rows and failed rows only
+- Status values: "In Library" (grey, no action), "Failed / Stuck" (red, re-scrapeable), or blank (not yet imported)
+- `'pending'` and `'failed'` scrape statuses are both treated as re-scrapeable — prevents rows getting permanently stuck if the Edge Function crashes mid-flight
+- Action: "Scrape" button per row — one at a time, no bulk scrape; shown for unimported rows, failed rows, and stuck pending rows
 - During scrape: row shows inline spinner, then updates to "Scraped ✓" or "Failed — [reason]"
 - Failed rows remain re-scrapeable
 
 No source URLs, source IDs, or external branding displayed anywhere in the UI.
+
+### Post-Scrape Editing
+
+Each scraped set in the library view has two inline edit actions:
+
+**Rename:** Edit the set name in place. Name is the only editable metadata field (year, sport, brand are considered stable after import).
+
+**Link to parent set:** A searchable dropdown of existing `library_sets` rows. Selecting one sets `parent_set_id` on the current set.
+- If the admin types a name not found in the library, the UI shows: *"[Name] not in library — discover it first?"* with a button that jumps to the Discovery Panel
+- A freshly scraped set lands with `set_type = 'base'` (the DB default) — this is acceptable as an interim state; the admin corrects it when linking a parent
+- Saving the parent prompts the admin to confirm/set `set_type` (insert, parallel) if it is still `'base'`
+- Parent can be cleared (set to null) to make a set top-level again
 
 ### Library Stats Panel (read-only)
 
@@ -159,7 +191,8 @@ Two connection points to the existing user flow:
 |----------|----------|
 | Firecrawl API error | Edge Function returns 500; admin UI shows error message on the row |
 | Parse produces zero cards | Treated as failure; `scrape_status` set to `failed` |
-| `source_ref` already exists | Discovery marks row as "In Library"; scrape button disabled |
+| `source_ref` already exists with `scrape_status = 'scraped'` | Discovery marks row as "In Library"; scrape button hidden |
+| `source_ref` exists with `scrape_status = 'pending'` or `'failed'` | Discovery marks row as "Failed / Stuck"; scrape button shown |
 | Partial parse (some rows fail) | Insert succeeds with cards parsed; parse errors returned in response and shown as a warning |
 
 ---
