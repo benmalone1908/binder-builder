@@ -104,9 +104,10 @@ Where `SetMetadata` is:
 - Calls Firecrawl on the specific set page
 - Parses the returned markdown table via a pure `parseExternalChecklist()` function
 - Inserts a new row into `library_sets` with `scrape_status = pending` — this is the moment the library row is created; discovery does not write to the DB. The unique constraint on `source_ref` acts as a server-side safety net; if a duplicate insert arrives concurrently, the constraint violation is treated as a no-op (the function proceeds to scrape).
+- Selects a cover image from the parsed cards using this priority: card `"1"` → card `"1a"` → first card in set. Downloads the first thumbnail URL for that card, uploads to Supabase Storage at `set-covers/{source_ref}.jpg`, and stores the resulting Storage URL as `cover_image_url`. If the download or upload fails, scraping continues without a cover image (non-fatal).
 - On success: updates `scrape_status = scraped`; on error: updates `scrape_status = failed`
 - Bulk-inserts into `library_checklist_items`
-- Returns summary of cards inserted and any parse warnings
+- Returns summary of cards inserted, cover image status, and any parse warnings
 
 ### Auth
 
@@ -131,6 +132,7 @@ Handles:
 - **Card number** — link text from column 10; includes variant suffixes (`1b`, `5b`)
 - **Player name** — first link text in column 19, before any `<br>`
 - **Team** — link text from column 27
+- **Thumbnail URL** — `src` of the first `<img>` in column 1; included in `ParsedCard` for cover image selection, not stored per card
 - **Flags** (`SP`, `VAR`, `ASR`, `RC`) — uppercase tokens after player name link in column 19, stored in `notes`
 - **Variant description** — text after `<br>` in column 19, appended to `notes`
 - **Multi-page sets** — Firecrawl crawl mode handles pagination; parser processes concatenated output
