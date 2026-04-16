@@ -19,11 +19,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 
 type SetRow = Tables<"library_sets">;
@@ -50,7 +45,7 @@ export function CollectionSetsDialog({
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     if (open && collection) {
@@ -139,49 +134,52 @@ export function CollectionSetsDialog({
           <p className="text-muted-foreground py-4">Loading...</p>
         ) : (
           <div className="space-y-4">
-            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={popoverOpen}
-                  className="w-full justify-between"
-                >
-                  Add sets to collection...
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search sets..." />
-                  <CommandList>
-                    <CommandEmpty>No sets found.</CommandEmpty>
-                    <CommandGroup>
-                      {sets.map((set) => (
-                        <CommandItem
-                          key={set.id}
-                          value={`${set.name} ${set.year} ${set.brand}`}
-                          onSelect={() => handleToggle(set.id)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedSetIds.has(set.id) ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span>{set.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {set.year} · {set.brand} · {set.product_line}
-                            </span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="relative">
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={searchOpen}
+                className="w-full justify-between"
+                onClick={() => setSearchOpen((o) => !o)}
+              >
+                Add sets to collection...
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+              {searchOpen && (
+                <div className="absolute top-full mt-1 z-50 w-full rounded-md border bg-popover shadow-md">
+                  <Command>
+                    <CommandInput placeholder="Search sets..." />
+                    <CommandList className="max-h-[200px]">
+                      <CommandEmpty>No sets found.</CommandEmpty>
+                      <CommandGroup>
+                        {sets.map((set) => (
+                          <CommandItem
+                            key={set.id}
+                            value={`${set.id} ${set.name} ${set.year} ${set.brand} ${set.product_line} ${set.set_type}`}
+                            onSelect={() => handleToggle(set.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedSetIds.has(set.id) ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{set.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {set.year} · {set.brand} · {set.product_line}
+                                {set.insert_set_name ? ` · ${set.insert_set_name}` : ""}
+                                {" · "}{set.set_type}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
               <p className="text-sm font-medium">

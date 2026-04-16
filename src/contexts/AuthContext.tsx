@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useMemo, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,79 +33,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const initialLoadDone = useRef(false);
 
   const fetchProfile = async (userId: string) => {
     try {
-      const result = await Promise.race([
-        supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", userId)
-          .single(),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Profile fetch timed out")), 5000)
-        ),
-      ]);
-      if (result.error) {
-        console.error("Failed to fetch profile:", result.error);
-        // Only clear profile if we don't already have one (initial load).
-        // On re-fetches (tab focus, token refresh), keep the existing profile.
-        setProfile((prev) => prev ?? null);
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if (error) {
+        console.error("Failed to fetch profile:", error);
       } else {
-        setProfile(result.data);
+        setProfile(data);
       }
     } catch (err) {
       console.error("Profile fetch error:", err);
-      setProfile((prev) => prev ?? null);
     }
     setProfileLoaded(true);
   };
 
   useEffect(() => {
-    // Get initial session
+    // getSession() is the primary mechanism for restoring a persisted session.
+    // It runs outside the auth lock so fetchProfile won't deadlock here.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchProfile(session.user.id);
+      } else {
+        setProfileLoaded(true);
       }
-      initialLoadDone.current = true;
       setLoading(false);
     }).catch((err) => {
       console.error("getSession error:", err);
-      initialLoadDone.current = true;
+      setProfileLoaded(true);
       setLoading(false);
     });
 
-    // Listen for auth changes (sign in, sign out, token refresh)
-    // After initial load, update state silently without flashing loading
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          if (event === "SIGNED_OUT") {
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setProfileLoaded(false);
-          } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-              await fetchProfile(session.user.id);
-            }
-          }
-          // TOKEN_REFRESHED and other events: no state updates needed.
-          // Supabase client internally updates its token; we don't need to
-          // re-render the app for token refreshes.
-        } catch (err) {
-          console.error("Auth state change error:", err);
-        }
-        // Only set loading=false if this is the first auth event (before getSession resolves)
-        if (!initialLoadDone.current) {
-          initialLoadDone.current = true;
+      (event, session) => {
+        if (event === "SIGNED_OUT") {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setProfileLoaded(false);
           setLoading(false);
+        } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+          setSession(session);
+          setUser(session?.user ?? null);
+          // Defer fetchProfile outside the auth lock to avoid deadlock
+          if (session?.user) {
+            const userId = session.user.id;
+            setTimeout(() => { fetchProfile(userId); }, 0);
+          }
+        } else if (event === "TOKEN_REFRESHED") {
+          setSession(session);
+          setUser(session?.user ?? null);
+          // Re-fetch profile in case the initial fetch failed due to an expired token
+          if (session?.user) {
+            const userId = session.user.id;
+            setTimeout(() => { fetchProfile(userId); }, 0);
+          }
         }
+        // INITIAL_SESSION is handled by getSession() above — ignore it here
       }
     );
 

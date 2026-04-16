@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ interface CollectionWithCount extends Collection {
 }
 
 export function CollectionsTab() {
+  const { user } = useAuth();
   const [collections, setCollections] = useState<CollectionWithCount[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -143,7 +145,7 @@ export function CollectionsTab() {
     } else {
       const { error } = await supabase
         .from("user_collections")
-        .insert({ name: name.trim() });
+        .insert({ name: name.trim(), user_id: user?.id });
 
       if (error) {
         if (error.code === "23505") {

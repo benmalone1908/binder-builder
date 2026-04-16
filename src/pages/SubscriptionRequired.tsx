@@ -1,11 +1,18 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SubscriptionRequired() {
-  const { profile, signOut } = useAuth();
+  const { profile, hasAccess, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // If access is granted after a delayed profile load (e.g. token refresh on cold start),
+  // redirect home automatically instead of leaving the user stuck on this page.
+  useEffect(() => {
+    if (hasAccess) navigate("/", { replace: true });
+  }, [hasAccess, navigate]);
 
   const trialExpired =
     profile?.subscription_status === "trial" &&

@@ -103,6 +103,8 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedYears, setExpandedYears] = useState<Set<number | null>>(new Set());
   const lastClickedIdRef = useRef<string | null>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   const [editSetOpen, setEditSetOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
@@ -147,8 +149,8 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     ]);
 
     if (setResult.error) {
-      if (isCompact && onClose) {
-        onClose();
+      if (isCompact && onCloseRef.current) {
+        onCloseRef.current();
       } else {
         navigate("/");
       }
@@ -197,7 +199,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
     setItems(mergedItems);
     setSelectedIds(new Set());
     setLoading(false);
-  }, [setId, isCompact, onClose, navigate, user?.id]);
+  }, [setId, navigate, user?.id]);
 
   useEffect(() => {
     loadData();
@@ -751,9 +753,9 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                       className="h-3.5 w-3.5"
                     />
                   </TableHead>
-                  {!isRainbow && <TableHead className="w-14 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Card #</TableHead>}
-                  {!isRainbow && <TableHead className="w-[40%] h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Player</TableHead>}
-                  {!isRainbow && <TableHead className="w-28 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Team</TableHead>}
+                  {!isRainbow && <TableHead className="w-20 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Card #</TableHead>}
+                  {!isRainbow && <TableHead className="h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Player</TableHead>}
+                  {!isRainbow && <TableHead className="w-32 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Team</TableHead>}
                   {isRainbow && <TableHead className="w-56 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Parallel</TableHead>}
                   {isMultiYear && yearFilter !== "all" && (
                     <TableHead className="w-12 h-7 py-1 px-2 text-[11px] font-semibold text-muted-foreground">Year</TableHead>
@@ -778,7 +780,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                         <ChecklistItemRow
                           key={item.id}
                           item={item}
-                          setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                          setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                           isMultiYear={false}
                           isRainbow={isRainbow}
                           isDraggable={true}
@@ -806,7 +808,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                           className="bg-muted/50 hover:bg-muted cursor-pointer"
                           onClick={() => toggleYearExpanded(group.year)}
                         >
-                          <TableCell colSpan={isRainbow ? 5 : 7} className="py-2">
+                          <TableCell colSpan={isRainbow ? 5 : 6} className="py-2">
                             <div className="flex items-center gap-2">
                               {isExpanded ? (
                                 <ChevronDown className="h-4 w-4" />
@@ -839,7 +841,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                                 <ChecklistItemRow
                                   key={item.id}
                                   item={item}
-                                  setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                                  setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                                   isMultiYear={false}
                                   isRainbow={isRainbow}
                                   selected={selectedIds.has(item.id)}
@@ -853,7 +855,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                               {Array.from(parallelGroups.entries()).map(([parallelName, cards]) => (
                                 <Fragment key={`parallel-${group.year}-${parallelName}`}>
                                   <TableRow className="bg-muted/30">
-                                    <TableCell colSpan={isRainbow ? 5 : 7} className="py-1.5">
+                                    <TableCell colSpan={isRainbow ? 5 : 6} className="py-1.5">
                                       <span className="text-xs font-medium text-muted-foreground ml-4">
                                         {parallelName}
                                       </span>
@@ -863,7 +865,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                                     <ChecklistItemRow
                                       key={item.id}
                                       item={item}
-                                      setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                                      setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                                       isMultiYear={false}
                                       selected={selectedIds.has(item.id)}
                                       onSelectChange={handleSelectChange}
@@ -888,7 +890,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                         <ChecklistItemRow
                           key={item.id}
                           item={item}
-                          setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                          setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                           isMultiYear={false}
                           isRainbow={isRainbow}
                           selected={selectedIds.has(item.id)}
@@ -919,7 +921,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                           <ChecklistItemRow
                             key={item.id}
                             item={item}
-                            setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                            setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                             isMultiYear={isMultiYear}
                             isRainbow={isRainbow}
                             selected={selectedIds.has(item.id)}
@@ -943,7 +945,7 @@ export function SetDetailContent({ setId, isCompact = false, onClose }: SetDetai
                               <ChecklistItemRow
                                 key={item.id}
                                 item={item}
-                                setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line }}
+                                setInfo={{ year: set.year, brand: set.brand, product_line: set.product_line, insert_set_name: set.insert_set_name }}
                                 isMultiYear={isMultiYear}
                                 selected={selectedIds.has(item.id)}
                                 onSelectChange={handleSelectChange}

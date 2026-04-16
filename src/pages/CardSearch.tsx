@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, Image, CheckCircle2, Ban, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ const SET_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function CardSearch() {
+  const { user } = useAuth();
   const [sets, setSets] = useState<SetRow[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -125,10 +127,30 @@ export default function CardSearch() {
     }
 
     // Join with set data
-    const resultsWithSets: SearchResult[] = (data || []).map((item) => ({
+    let resultsWithSets: SearchResult[] = (data || []).map((item) => ({
       ...item,
       set: sets.find((s) => s.id === item.library_set_id)!,
     }));
+
+    // Merge user's card statuses
+    if (user && resultsWithSets.length > 0) {
+      const itemIds = resultsWithSets.map((r) => r.id);
+      const { data: userStatuses } = await supabase
+        .from("user_card_status")
+        .select("library_checklist_item_id, status")
+        .eq("user_id", user.id)
+        .in("library_checklist_item_id", itemIds);
+
+      if (userStatuses && userStatuses.length > 0) {
+        const statusMap = new Map(userStatuses.map((s) => [s.library_checklist_item_id, s.status]));
+        resultsWithSets = resultsWithSets.map((item) => ({
+          ...item,
+          status: (statusMap.get(item.id) ?? "need") as "need" | "pending" | "owned",
+        }));
+      } else {
+        resultsWithSets = resultsWithSets.map((item) => ({ ...item, status: "need" as const }));
+      }
+    }
 
     // Sort by year desc, then product line
     resultsWithSets.sort((a, b) => {
@@ -141,12 +163,14 @@ export default function CardSearch() {
   }
 
   async function setStatus(item: SearchResult, newStatus: "need" | "pending" | "owned") {
-    if (item.status === newStatus) return;
+    if (item.status === newStatus || !user) return;
 
     const { error } = await supabase
-      .from("library_checklist_items")
-      .update({ status: newStatus })
-      .eq("id", item.id);
+      .from("user_card_status")
+      .upsert(
+        { user_id: user.id, library_checklist_item_id: item.id, status: newStatus },
+        { onConflict: "user_id,library_checklist_item_id" }
+      );
 
     if (error) {
       toast.error("Failed to update status");

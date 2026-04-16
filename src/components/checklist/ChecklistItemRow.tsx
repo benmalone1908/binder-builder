@@ -18,6 +18,7 @@ interface SetInfo {
   year: number;
   brand: string;
   product_line: string;
+  insert_set_name?: string | null;
 }
 
 interface ChecklistItemRowProps {
@@ -148,8 +149,9 @@ export function ChecklistItemRow({
 
   function openImageSearch() {
     // For multi-year sets, use the card's year; otherwise use the set's year
-    const year = isMultiYear && item.year ? item.year : setInfo.year;
-    const query = `${year} ${setInfo.brand} ${setInfo.product_line} ${item.player_name} #${item.card_number} baseball card`;
+    const year = item.year ?? setInfo.year;
+    const insertName = setInfo.insert_set_name ? ` ${setInfo.insert_set_name}` : "";
+    const query = `${year} ${setInfo.brand} ${setInfo.product_line}${insertName} ${item.player_name} #${item.card_number} baseball card`;
     window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`, "_blank");
   }
 
@@ -230,7 +232,7 @@ export function ChecklistItemRow({
           ) : (
             <button
               onClick={() => startEditing("card_number")}
-              className="text-xs text-muted-foreground font-medium hover:text-foreground transition-colors"
+              className="text-xs text-muted-foreground font-medium hover:text-foreground transition-colors whitespace-nowrap"
             >
               {item.card_number}
             </button>
