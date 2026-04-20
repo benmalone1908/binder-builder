@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus, ChevronDown } from "lucide-react";
+import { Search, LayoutGrid, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Plus, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +93,7 @@ export default function SetsIndex() {
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all");
   const [sportPopoverOpen, setSportPopoverOpen] = useState(false);
+  const [viewPopoverOpen, setViewPopoverOpen] = useState(false);
 
   const availableSports = useMemo(() => {
     const present = new Set(sets.map((s) => s.sport as Sport));
@@ -384,18 +385,9 @@ export default function SetsIndex() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList>
-            <TabsTrigger value="regular" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Regular Sets
-            </TabsTrigger>
-            <TabsTrigger value="multi_year" className="gap-2">
-              <Layers className="h-4 w-4" />
-              Multi-Year Sets
-            </TabsTrigger>
-            <TabsTrigger value="rainbow" className="gap-2">
-              <Palette className="h-4 w-4" />
-              Rainbows
-            </TabsTrigger>
+            <TabsTrigger value="regular">Regular Sets</TabsTrigger>
+            <TabsTrigger value="multi_year">Multi-Year Sets</TabsTrigger>
+            <TabsTrigger value="rainbow">Rainbows</TabsTrigger>
           </TabsList>
 
           <div className="flex items-center gap-3">
@@ -456,47 +448,59 @@ export default function SetsIndex() {
                 </PopoverContent>
               </Popover>
             )}
-            {/* By Year/Collection toggle — leave in place for now */}
-            {activeTab === "regular" && collections.length > 0 && (
-              <div className="flex items-center border rounded-md">
-                <Button
-                  variant={groupBy === "year" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="rounded-r-none gap-2"
-                  onClick={() => setGroupBy("year")}
-                >
-                  <Calendar className="h-4 w-4" />
-                  By Year
+            <Popover open={viewPopoverOpen} onOpenChange={setViewPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  View
+                  <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
-                <Button
-                  variant={groupBy === "collection" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="rounded-l-none gap-2"
-                  onClick={() => setGroupBy("collection")}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  By Collection
-                </Button>
-              </div>
-            )}
-            <div className="flex items-center border rounded-md">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-r-none"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-l-none"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-3" align="end">
+                <div className="space-y-3">
+                  {activeTab === "regular" && collections.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Group by</p>
+                      <div className="space-y-0.5">
+                        {(["year", "collection"] as const).map((g) => (
+                          <button
+                            key={g}
+                            onClick={() => setGroupBy(g)}
+                            className={cn(
+                              "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                              groupBy === g
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "hover:bg-muted"
+                            )}
+                          >
+                            {g === "year" ? "By Year" : "By Collection"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Display</p>
+                    <div className="space-y-0.5">
+                      {(["grid", "list"] as const).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setViewMode(v)}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                            viewMode === v
+                              ? "bg-accent text-accent-foreground font-medium"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          {v === "grid" ? "Grid" : "List"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
