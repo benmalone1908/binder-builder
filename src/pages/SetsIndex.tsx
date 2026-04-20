@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -37,6 +38,7 @@ type CollectionRow = Tables<"user_collections">;
 type ViewMode = "grid" | "list";
 type GroupBy = "year" | "collection";
 type SetTab = "regular" | "multi_year" | "rainbow";
+type CompletionFilter = "all" | "open" | "completed";
 
 interface SetStats {
   total: number;
@@ -88,6 +90,7 @@ export default function SetsIndex() {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all");
 
   async function loadSetStats(setId: string) {
     if (!user) return;
@@ -352,12 +355,23 @@ export default function SetsIndex() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">My Sets</h1>
-        <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Set
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search sets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-56"
+            />
+          </div>
+          <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Set
+          </Button>
+        </div>
       </div>
 
       <Tabs value={sportFilter} onValueChange={(v) => setSportFilter(v as Sport | "all")}>
@@ -388,16 +402,24 @@ export default function SetsIndex() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search sets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center rounded-full border bg-muted p-0.5 gap-0.5">
+              {(["all", "open", "completed"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setCompletionFilter(f)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    completionFilter === f
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f === "all" ? "All" : f === "open" ? "Open" : "Completed"}
+                </button>
+              ))}
             </div>
+            {/* By Year/Collection toggle — leave in place for now */}
             {activeTab === "regular" && collections.length > 0 && (
               <div className="flex items-center border rounded-md">
                 <Button
