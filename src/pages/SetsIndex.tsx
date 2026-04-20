@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus } from "lucide-react";
+import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -76,7 +77,7 @@ export default function SetsIndex() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<SetTab>("regular");
-  const [sportFilter, setSportFilter] = useState<Sport | "all">("baseball");
+  const [sportFilter, setSportFilter] = useState<Sport | "all">("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("year");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
@@ -91,6 +92,12 @@ export default function SetsIndex() {
   const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all");
+  const [sportPopoverOpen, setSportPopoverOpen] = useState(false);
+
+  const availableSports = useMemo(() => {
+    const present = new Set(sets.map((s) => s.sport as Sport));
+    return SPORTS.filter((s) => present.has(s));
+  }, [sets]);
 
   async function loadSetStats(setId: string) {
     if (!user) return;
@@ -374,17 +381,6 @@ export default function SetsIndex() {
         </div>
       </div>
 
-      <Tabs value={sportFilter} onValueChange={(v) => setSportFilter(v as Sport | "all")}>
-        <TabsList>
-          {SPORTS.map((sport) => (
-            <TabsTrigger key={sport} value={sport}>
-              {SPORT_LABELS[sport]}
-            </TabsTrigger>
-          ))}
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList>
@@ -419,6 +415,47 @@ export default function SetsIndex() {
                 </button>
               ))}
             </div>
+            {availableSports.length > 1 && (
+              <Popover open={sportPopoverOpen} onOpenChange={setSportPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    {sportFilter === "all"
+                      ? "All Sports"
+                      : SPORT_LABELS[sportFilter as Sport]}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-1.5" align="end">
+                  <div className="space-y-0.5">
+                    {availableSports.map((sport) => (
+                      <button
+                        key={sport}
+                        onClick={() => { setSportFilter(sport); setSportPopoverOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                          sportFilter === sport
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        {SPORT_LABELS[sport]}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setSportFilter("all"); setSportPopoverOpen(false); }}
+                      className={cn(
+                        "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                        sportFilter === "all"
+                          ? "bg-accent text-accent-foreground font-medium"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      All Sports
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             {/* By Year/Collection toggle — leave in place for now */}
             {activeTab === "regular" && collections.length > 0 && (
               <div className="flex items-center border rounded-md">
