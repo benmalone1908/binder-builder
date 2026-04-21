@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Defer fetchProfile outside the auth lock to avoid deadlock
           if (session?.user) {
             const userId = session.user.id;
+            setProfileLoaded(false);
             setTimeout(() => { fetchProfile(userId); }, 0);
           }
         } else if (event === "TOKEN_REFRESHED") {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, LayoutGrid, List, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Calendar, Layers, Palette, Plus } from "lucide-react";
+import { Search, LayoutGrid, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Plus, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -37,6 +39,7 @@ type CollectionRow = Tables<"user_collections">;
 type ViewMode = "grid" | "list";
 type GroupBy = "year" | "collection";
 type SetTab = "regular" | "multi_year" | "rainbow";
+type CompletionFilter = "all" | "open" | "completed";
 
 interface SetStats {
   total: number;
@@ -74,7 +77,7 @@ export default function SetsIndex() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<SetTab>("regular");
-  const [sportFilter, setSportFilter] = useState<Sport | "all">("baseball");
+  const [sportFilter, setSportFilter] = useState<Sport | "all">("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("year");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
@@ -88,6 +91,14 @@ export default function SetsIndex() {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>("all");
+  const [sportPopoverOpen, setSportPopoverOpen] = useState(false);
+  const [viewPopoverOpen, setViewPopoverOpen] = useState(false);
+
+  const availableSports = useMemo(() => {
+    const present = new Set(sets.map((s) => s.sport as Sport));
+    return SPORTS.filter((s) => present.has(s));
+  }, [sets]);
 
   async function loadSetStats(setId: string) {
     if (!user) return;
@@ -271,20 +282,29 @@ export default function SetsIndex() {
   }, [sets, searchTerm, activeTab, sportFilter]);
 
   const setsByYear = useMemo(() => {
+    let setsToGroup = filteredSets;
+    if (completionFilter !== "all") {
+      setsToGroup = filteredSets.filter((s) => {
+        const stats = statsMap.get(s.id);
+        if (completionFilter === "completed") {
+          return stats && stats.total > 0 && stats.owned === stats.total;
+        }
+        // "open": no cards yet counts as open
+        return !stats || stats.total === 0 || stats.owned < stats.total;
+      });
+    }
     const grouped = new Map<number, SetRow[]>();
-    for (const set of filteredSets) {
+    for (const set of setsToGroup) {
       const existing = grouped.get(set.year) || [];
       existing.push(set);
       grouped.set(set.year, existing);
     }
-    // Sort years descending (most recent first)
     const years = [...grouped.keys()].sort((a, b) => b - a);
-    // Sort sets within each year alphabetically by name
     return years.map((year) => ({
       year,
       sets: grouped.get(year)!.sort((a, b) => a.name.localeCompare(b.name)),
     }));
-  }, [filteredSets]);
+  }, [filteredSets, statsMap, completionFilter]);
 
   const setsByCollection = useMemo(() => {
     // Build a map of collection ID to set IDs
@@ -302,7 +322,16 @@ export default function SetsIndex() {
       const setIds = collectionSetMap.get(collection.id) || new Set();
       const collectionSets = filteredSets.filter((s) => setIds.has(s.id));
 
-      if (collectionSets.length === 0 && searchTerm) continue; // Hide empty collections when searching
+      if (collectionSets.length === 0 && (searchTerm || completionFilter !== "all")) continue; // Hide empty collections when searching or filtering
+
+      if (completionFilter !== "all" && collectionSets.length > 0) {
+        const allComplete = collectionSets.every((s) => {
+          const stats = statsMap.get(s.id);
+          return stats !== undefined && stats.total > 0 && stats.owned === stats.total;
+        });
+        if (completionFilter === "completed" && !allComplete) continue;
+        if (completionFilter === "open" && allComplete) continue;
+      }
 
       let totalCards = 0;
       let ownedCards = 0;
@@ -328,12 +357,22 @@ export default function SetsIndex() {
     }
 
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [collections, setCollectionJoins, filteredSets, statsMap, searchTerm]);
+  }, [collections, setCollectionJoins, filteredSets, statsMap, searchTerm, completionFilter]);
 
-  // For multi-year sets, just sort alphabetically by name
+  // Used by both multi-year and rainbow tabs — filteredSets is already scoped to activeTab
   const multiYearSetsSorted = useMemo(() => {
-    return [...filteredSets].sort((a, b) => a.name.localeCompare(b.name));
-  }, [filteredSets]);
+    let result = filteredSets;
+    if (completionFilter !== "all") {
+      result = filteredSets.filter((s) => {
+        const stats = statsMap.get(s.id);
+        if (completionFilter === "completed") {
+          return stats && stats.total > 0 && stats.owned === stats.total;
+        }
+        return !stats || stats.total === 0 || stats.owned < stats.total;
+      });
+    }
+    return [...result].sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredSets, statsMap, completionFilter]);
 
   function handleEdit(set: SetRow) {
     setEditingSet(set);
@@ -352,115 +391,150 @@ export default function SetsIndex() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">My Sets</h1>
-        <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Set
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search sets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-56"
+            />
+          </div>
+          <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Set
+          </Button>
+        </div>
       </div>
-
-      <Tabs value={sportFilter} onValueChange={(v) => setSportFilter(v as Sport | "all")}>
-        <TabsList>
-          {SPORTS.map((sport) => (
-            <TabsTrigger key={sport} value={sport}>
-              {SPORT_LABELS[sport]}
-            </TabsTrigger>
-          ))}
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
-      </Tabs>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SetTab)}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList>
-            <TabsTrigger value="regular" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Regular Sets
-            </TabsTrigger>
-            <TabsTrigger value="multi_year" className="gap-2">
-              <Layers className="h-4 w-4" />
-              Multi-Year Sets
-            </TabsTrigger>
-            <TabsTrigger value="rainbow" className="gap-2">
-              <Palette className="h-4 w-4" />
-              Rainbows
-            </TabsTrigger>
+            <TabsTrigger value="regular">Regular Sets</TabsTrigger>
+            <TabsTrigger value="multi_year">Multi-Year Sets</TabsTrigger>
+            <TabsTrigger value="rainbow">Rainbows</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search sets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center rounded-full border bg-muted p-0.5 gap-0.5">
+              {(["all", "open", "completed"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setCompletionFilter(f)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    completionFilter === f
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f === "all" ? "All" : f === "open" ? "Open" : "Completed"}
+                </button>
+              ))}
             </div>
-            {activeTab === "regular" && collections.length > 0 && (
-              <div className="flex items-center border rounded-md">
-                <Button
-                  variant={groupBy === "year" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="rounded-r-none gap-2"
-                  onClick={() => setGroupBy("year")}
-                >
-                  <Calendar className="h-4 w-4" />
-                  By Year
-                </Button>
-                <Button
-                  variant={groupBy === "collection" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="rounded-l-none gap-2"
-                  onClick={() => setGroupBy("collection")}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  By Collection
-                </Button>
-              </div>
+            {availableSports.length > 1 && (
+              <Popover open={sportPopoverOpen} onOpenChange={setSportPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    {sportFilter === "all"
+                      ? "All Sports"
+                      : SPORT_LABELS[sportFilter as Sport]}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-40 p-1.5" align="end">
+                  <div className="space-y-0.5">
+                    {availableSports.map((sport) => (
+                      <button
+                        key={sport}
+                        onClick={() => { setSportFilter(sport); setSportPopoverOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                          sportFilter === sport
+                            ? "bg-accent text-accent-foreground font-medium"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        {SPORT_LABELS[sport]}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setSportFilter("all"); setSportPopoverOpen(false); }}
+                      className={cn(
+                        "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                        sportFilter === "all"
+                          ? "bg-accent text-accent-foreground font-medium"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      All Sports
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
-            <div className="flex items-center border rounded-md">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-r-none"
-                onClick={() => setViewMode("grid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="sm"
-                className="rounded-l-none"
-                onClick={() => setViewMode("list")}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+            <Popover open={viewPopoverOpen} onOpenChange={setViewPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  View
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-3" align="end">
+                <div className="space-y-3">
+                  {activeTab === "regular" && collections.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Group by</p>
+                      <div className="space-y-0.5">
+                        {(["year", "collection"] as const).map((g) => (
+                          <button
+                            key={g}
+                            onClick={() => setGroupBy(g)}
+                            className={cn(
+                              "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                              groupBy === g
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "hover:bg-muted"
+                            )}
+                          >
+                            {g === "year" ? "By Year" : "By Collection"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Display</p>
+                    <div className="space-y-0.5">
+                      {(["grid", "list"] as const).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setViewMode(v)}
+                          className={cn(
+                            "w-full text-left px-2.5 py-1.5 rounded-sm text-sm transition-colors",
+                            viewMode === v
+                              ? "bg-accent text-accent-foreground font-medium"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          {v === "grid" ? "Grid" : "List"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
         <TabsContent value="regular" className="mt-6">
           {loading ? (
             <p className="text-muted-foreground">Loading...</p>
-          ) : filteredSets.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No sets match your search." : "No sets in your collection yet."}
-              </p>
-              {!searchTerm && (
-                <div className="flex items-center justify-center gap-3">
-                  <Button onClick={() => navigate("/library")} variant="outline">
-                    Browse Library
-                  </Button>
-                  <span className="text-muted-foreground">or</span>
-                  <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} variant="outline">
-                    Add a New Set
-                  </Button>
-                </div>
-              )}
-            </div>
           ) : groupBy === "collection" ? (
             <div className="space-y-6">
               {setsByCollection.map((collection) => (
@@ -563,7 +637,34 @@ export default function SetsIndex() {
               ))}
               {setsByCollection.length === 0 && (
                 <div className="text-center py-12 border rounded-lg bg-muted/20">
-                  <p className="text-muted-foreground">No collections yet. Create collections in Admin to group your sets.</p>
+                  <p className="text-muted-foreground">
+                    {completionFilter !== "all"
+                      ? completionFilter === "open" ? "No open collections." : "No completed collections."
+                      : "No collections yet. Create collections in Admin to group your sets."}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : setsByYear.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                {completionFilter === "open"
+                  ? "No open sets."
+                  : completionFilter === "completed"
+                  ? "No completed sets."
+                  : searchTerm
+                  ? "No sets match your search."
+                  : "No sets in your collection yet."}
+              </p>
+              {completionFilter === "all" && !searchTerm && (
+                <div className="flex items-center justify-center gap-3">
+                  <Button onClick={() => navigate("/library")} variant="outline">
+                    Browse Library
+                  </Button>
+                  <span className="text-muted-foreground">or</span>
+                  <Button onClick={() => { setEditingSet(null); setFormOpen(true); }} variant="outline">
+                    Add a New Set
+                  </Button>
                 </div>
               )}
             </div>
@@ -687,12 +788,18 @@ export default function SetsIndex() {
         <TabsContent value="multi_year" className="mt-6">
           {loading ? (
             <p className="text-muted-foreground">Loading...</p>
-          ) : filteredSets.length === 0 ? (
+          ) : multiYearSetsSorted.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No multi-year sets match your search." : "No multi-year sets in your collection."}
+                {completionFilter === "open"
+                  ? "No open multi-year sets."
+                  : completionFilter === "completed"
+                  ? "No completed multi-year sets."
+                  : searchTerm
+                  ? "No multi-year sets match your search."
+                  : "No multi-year sets in your collection."}
               </p>
-              {!searchTerm && (
+              {completionFilter === "all" && !searchTerm && (
                 <div className="flex items-center justify-center gap-3">
                   <Button onClick={() => navigate("/library")} variant="outline">
                     Browse Library
@@ -813,12 +920,18 @@ export default function SetsIndex() {
         <TabsContent value="rainbow" className="mt-6">
           {loading ? (
             <p className="text-muted-foreground">Loading...</p>
-          ) : filteredSets.length === 0 ? (
+          ) : multiYearSetsSorted.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                {searchTerm ? "No rainbow sets match your search." : "No rainbow sets in your collection."}
+                {completionFilter === "open"
+                  ? "No open rainbow sets."
+                  : completionFilter === "completed"
+                  ? "No completed rainbow sets."
+                  : searchTerm
+                  ? "No rainbow sets match your search."
+                  : "No rainbow sets in your collection."}
               </p>
-              {!searchTerm && (
+              {completionFilter === "all" && !searchTerm && (
                 <div className="flex items-center justify-center gap-3">
                   <Button onClick={() => navigate("/library")} variant="outline">
                     Browse Library
