@@ -359,7 +359,7 @@ export default function SetsIndex() {
     return result.sort((a, b) => a.name.localeCompare(b.name));
   }, [collections, setCollectionJoins, filteredSets, statsMap, searchTerm, completionFilter]);
 
-  // For multi-year sets, just sort alphabetically by name
+  // Used by both multi-year and rainbow tabs — filteredSets is already scoped to activeTab
   const multiYearSetsSorted = useMemo(() => {
     let result = filteredSets;
     if (completionFilter !== "all") {
