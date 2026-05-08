@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, LayoutGrid, MoreVertical, Pencil, Trash2, ImagePlus, FolderOpen, Plus, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +69,7 @@ const SET_TYPE_LABELS: Record<string, string> = {
 
 export default function SetsIndex() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAdmin } = useAuth();
   const [sets, setSets] = useState<SetRow[]>([]);
   const [statsMap, setStatsMap] = useState<Map<string, SetStats>>(new Map());
@@ -87,7 +88,15 @@ export default function SetsIndex() {
   const [deletingSet, setDeletingSet] = useState<SetRow | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
   const [imageSet, setImageSet] = useState<SetRow | null>(null);
-  const [flyoutSetId, setFlyoutSetId] = useState<string | null>(null);
+  const flyoutSetId = searchParams.get("flyout");
+  function setFlyoutSetId(id: string | null) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("flyout", id);
+      else next.delete("flyout");
+      return next;
+    }, { replace: true });
+  }
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [searchCollectionId, setSearchCollectionId] = useState<string | null>(null);
   const [searchCollectionName, setSearchCollectionName] = useState<string | null>(null);
